@@ -1,0 +1,73 @@
+export type TaskType = 'task' | 'gym' | 'meal' | 'prayer' | 'custom';
+
+export interface Task {
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:mm
+  done: boolean;
+  type: TaskType;
+  notes?: string;
+}
+
+export interface Exercise {
+  id: string;
+  name: string;
+  sets: number;
+  reps: number;
+  weight: number;
+}
+
+export interface Workout {
+  type: 'Push' | 'Pull' | 'Legs' | 'Rest' | '';
+  exercises: Exercise[];
+}
+
+export interface Meal {
+  id: string;
+  type: 'Breakfast' | 'Lunch' | 'Snack' | 'Dinner';
+  name: string;
+  protein: number;
+  calories?: number;
+}
+
+export type PrayerState = 'pending' | 'done' | 'missed';
+
+export interface Prayers {
+  Fajr: PrayerState;
+  Dhuhr: PrayerState;
+  Asr: PrayerState;
+  Maghrib: PrayerState;
+  Isha: PrayerState;
+}
+
+export interface WeightLog {
+  date: string; // YYYY-MM-DD
+  weight: number;
+}
+
+export interface Settings {
+  proteinGoal: number;
+}
+
+export interface LifeOSData {
+  tasks: Task[];
+  workouts: Record<string, Workout>; // Key: YYYY-MM-DD
+  meals: Record<string, Meal[]>; // Key: YYYY-MM-DD
+  prayers: Record<string, Prayers>; // Key: YYYY-MM-DD
+  journal: Record<string, string>; // Key: YYYY-MM-DD
+  weightLogs: WeightLog[];
+  settings: Settings;
+}
+
+export const defaultSettings: Settings = {
+  proteinGoal: 150,
+};
+
+export const defaultPrayers: Prayers = {
+  Fajr: 'pending',
+  Dhuhr: 'pending',
+  Asr: 'pending',
+  Maghrib: 'pending',
+  Isha: 'pending',
+};

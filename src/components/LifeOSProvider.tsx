@@ -1,0 +1,63 @@
+'use client';
+
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { LifeOSData, defaultPrayers } from '@/lib/types';
+import { getLifeOSData, saveLifeOSData, getTodayString } from '@/lib/storage';
+
+interface LifeOSContextType {
+  data: LifeOSData;
+  updateData: (newData: Partial<LifeOSData> | ((prev: LifeOSData) => Partial<LifeOSData>)) => void;
+  isLoaded: boolean;
+  quickAddType: 'task' | 'meal' | 'workout' | null;
+  openQuickAdd: (type: 'task' | 'meal' | 'workout') => void;
+  closeQuickAdd: () => void;
+}
+
+const LifeOSContext = createContext<LifeOSContextType | undefined>(undefined);
+
+export const LifeOSProvider = ({ children }: { children: ReactNode }) => {
+  const [data, setData] = useState<LifeOSData | null>(null);
+  const [quickAddType, setQuickAddType] = useState<'task' | 'meal' | 'workout' | null>(null);
+
+  useEffect(() => {
+    const loadedData = getLifeOSData();
+    const today = getTodayString();
+
+    // Seeding empty prayers for today if no data is found
+    if (!loadedData.prayers[today]) {
+      loadedData.prayers[today] = { ...defaultPrayers };
+      saveLifeOSData(loadedData);
+    }
+
+    setData(loadedData);
+  }, []);
+
+  const updateData: LifeOSContextType['updateData'] = (newData) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      const updates = typeof newData === 'function' ? newData(prev) : newData;
+      const merged = { ...prev, ...updates };
+      saveLifeOSData(merged);
+      return merged;
+    });
+  };
+
+  const openQuickAdd = (type: 'task' | 'meal' | 'workout') => {
+    setQuickAddType(type);
+  };
+  const closeQuickAdd = () => setQuickAddType(null);
+
+  return (
+    <LifeOSContext.Provider value={{ data: data as LifeOSData, updateData, isLoaded: !!data, quickAddType, openQuickAdd, closeQuickAdd }}>
+      {data ? children : <div className="min-h-screen flex items-center justify-center text-zinc-500">Loading Life OS...</div>}
+    </LifeOSContext.Provider>
+  );
+};
+
+export const useLifeOS = () => {
+  const context = useContext(LifeOSContext);
+  if (!context) {
+    throw new Error('useLifeOS must be used within a LifeOSProvider');
+  }
+  return context;
+};
