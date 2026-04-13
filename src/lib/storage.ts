@@ -10,6 +10,7 @@ export const getDefaultData = (): LifeOSData => ({
   prayers: {},
   journal: {},
   weightLogs: [],
+  coding: {},
   settings: defaultSettings,
 });
 
@@ -40,6 +41,7 @@ export const getLifeOSData = (): LifeOSData => {
       ...parsed,
       gym,
       meals,
+      coding: parsed.coding || {},
       settings: { ...defaultSettings, ...(parsed.settings || {}) },
     };
   } catch (err) {

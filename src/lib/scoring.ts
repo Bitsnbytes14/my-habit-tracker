@@ -13,27 +13,27 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
     score += prayersScore;
   }
 
-  // 2. Gym (20pts)
+  // 2. Gym (15pts)
   const gymDone = data.gym[dateStr] === true;
   let gymScore = 0;
   if (gymDone) {
-    gymScore = 20;
+    gymScore = 15;
     score += gymScore;
   }
 
-  // 3. Protein goal (20pts)
+  // 3. Protein goal (15pts)
   const todayMeals = data.meals.filter((m) => m.date === dateStr);
   const proteinGoal = data.settings?.proteinGoal || 150;
   const totalProtein = todayMeals.reduce((acc, meal) => acc + (meal.protein || 0), 0);
-  const proteinScore = Math.min((totalProtein / proteinGoal) * 20, 20);
+  const proteinScore = Math.min((totalProtein / proteinGoal) * 15, 15);
   score += proteinScore;
 
-  // 4. Tasks ratio (20pts)
+  // 4. Tasks ratio (15pts)
   const todayTasks = data.tasks.filter(t => t.date === dateStr);
   let tasksScore = 0;
   if (todayTasks.length > 0) {
     const doneTasks = todayTasks.filter(t => t.done).length;
-    tasksScore = (doneTasks / todayTasks.length) * 20;
+    tasksScore = (doneTasks / todayTasks.length) * 15;
     score += tasksScore;
   } else {
     tasksScore = 0;
@@ -45,6 +45,14 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
   if (journalEntry && journalEntry.trim().length > 0) {
     journalScore = 10;
     score += journalScore;
+  }
+
+  // 6. Coding/Work (15pts)
+  const codingDone = data.coding?.[dateStr] === true;
+  let codingScore = 0;
+  if (codingDone) {
+    codingScore = 15;
+    score += codingScore;
   }
 
   return Math.round(score);

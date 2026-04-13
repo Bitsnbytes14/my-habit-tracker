@@ -52,6 +52,7 @@ export interface LifeOSData {
   prayers: Record<string, Prayers>; // Key: YYYY-MM-DD
   journal: Record<string, string>; // Key: YYYY-MM-DD
   weightLogs: WeightLog[];
+  coding: Record<string, boolean>; // Key: YYYY-MM-DD
   settings: Settings;
 }
 
