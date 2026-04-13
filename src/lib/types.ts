@@ -19,6 +19,12 @@ export interface Meal {
   calories?: number;
 }
 
+export interface Todo {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export type PrayerState = 'pending' | 'done' | 'missed';
 
 export interface Prayers {
@@ -42,6 +48,7 @@ export interface LifeOSData {
   tasks: Task[];
   gym: Record<string, boolean>; // Key: YYYY-MM-DD
   meals: Meal[];
+  todos: Todo[];
   prayers: Record<string, Prayers>; // Key: YYYY-MM-DD
   journal: Record<string, string>; // Key: YYYY-MM-DD
   weightLogs: WeightLog[];

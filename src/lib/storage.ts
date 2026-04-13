@@ -6,6 +6,7 @@ export const getDefaultData = (): LifeOSData => ({
   tasks: [],
   gym: {},
   meals: [],
+  todos: [],
   prayers: {},
   journal: {},
   weightLogs: [],

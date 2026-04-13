@@ -27,6 +27,9 @@ export default function Dashboard() {
   const gymDone = data.gym[today] === true;
   const latestWeight = data.weightLogs.length > 0 ? data.weightLogs[data.weightLogs.length - 1].weight : null;
 
+  const todos = data.todos || [];
+  const todosDone = todos.filter(t => t.done).length;
+
   const displayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   const toggleGym = () => {
@@ -95,6 +98,14 @@ export default function Dashboard() {
           <p className={`text-xl tracking-tight font-bold ${gymDone ? 'text-green-400' : 'text-zinc-500'}`}>
             {gymDone ? 'Completed' : 'Pending'}
           </p>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col justify-between col-span-2">
+          <h4 className="text-zinc-400 text-xs font-semibold uppercase mb-2">To-Dos (Global)</h4>
+          <div className="flex justify-between items-baseline">
+            <p className="text-2xl font-bold text-white">{todosDone} <span className="text-sm font-normal text-zinc-500">/ {todos.length}</span></p>
+            <a href="/todos" className="text-sm text-indigo-400 font-semibold hover:text-indigo-300">View List →</a>
+          </div>
         </div>
       </section>
 
