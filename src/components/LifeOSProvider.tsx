@@ -8,8 +8,8 @@ interface LifeOSContextType {
   data: LifeOSData;
   updateData: (newData: Partial<LifeOSData> | ((prev: LifeOSData) => Partial<LifeOSData>)) => void;
   isLoaded: boolean;
-  quickAddType: 'task' | 'meal' | 'workout' | null;
-  openQuickAdd: (type: 'task' | 'meal' | 'workout') => void;
+  quickAddType: 'task' | 'meal' | null;
+  openQuickAdd: (type: 'task' | 'meal') => void;
   closeQuickAdd: () => void;
 }
 
@@ -17,7 +17,7 @@ const LifeOSContext = createContext<LifeOSContextType | undefined>(undefined);
 
 export const LifeOSProvider = ({ children }: { children: ReactNode }) => {
   const [data, setData] = useState<LifeOSData | null>(null);
-  const [quickAddType, setQuickAddType] = useState<'task' | 'meal' | 'workout' | null>(null);
+  const [quickAddType, setQuickAddType] = useState<'task' | 'meal' | null>(null);
 
   useEffect(() => {
     const loadedData = getLifeOSData();
@@ -42,7 +42,7 @@ export const LifeOSProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  const openQuickAdd = (type: 'task' | 'meal' | 'workout') => {
+  const openQuickAdd = (type: 'task' | 'meal') => {
     setQuickAddType(type);
   };
   const closeQuickAdd = () => setQuickAddType(null);

@@ -7,6 +7,7 @@ import { getTodayString } from '@/lib/storage';
 export const QuickAddModal = () => {
   const { updateData, quickAddType, openQuickAdd, closeQuickAdd } = useLifeOS();
   const [title, setTitle] = useState('');
+  const [time, setTime] = useState('');
   
   const isOpen = quickAddType !== null;
   const currentType = quickAddType || 'task';
@@ -15,13 +16,23 @@ export const QuickAddModal = () => {
   useEffect(() => {
     if (isOpen) {
       setTitle('');
+      setTime('');
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
-    if (!title.trim() && currentType !== 'workout') return;
+    if (!title.trim()) {
+      alert("Title is required!");
+      return;
+    }
+    
+    if (currentType === 'task' && !time) {
+      alert("Time is required for tasks!");
+      return;
+    }
+
     const today = getTodayString();
     const id = Date.now().toString();
 
@@ -35,37 +46,15 @@ export const QuickAddModal = () => {
             id,
             title,
             date: today,
-            time: '12:00', // Default, can be edited in calendar
+            time: time,
             done: false,
             type: 'task',
           },
         ];
       } else if (currentType === 'meal') {
-        const mealsToday = draft.meals[today] || [];
-        draft.meals = {
+        draft.meals = [
           ...draft.meals,
-          [today]: [
-            ...mealsToday,
-            { id, type: 'Snack', name: title, protein: 0 },
-          ],
-        };
-      } else if (currentType === 'workout') {
-        const wTitle = title.trim() || 'Gym';
-        draft.workouts = {
-          ...draft.workouts,
-          [today]: draft.workouts[today] || { type: 'Push', exercises: [] },
-        };
-        // Add a task for the workout directly in calendar for full schedule visibility
-        draft.tasks = [
-          ...draft.tasks,
-          {
-            id: `wo-${id}`,
-            title: wTitle,
-            date: today,
-            time: '17:00', // Default gym time
-            done: false,
-            type: 'gym',
-          },
+          { id, date: today, type: 'Snack', name: title, protein: 0 },
         ];
       }
       return draft;
@@ -88,7 +77,7 @@ export const QuickAddModal = () => {
         <h2 className="text-xl font-bold text-white mb-6">Quick Add</h2>
 
         <div className="flex gap-2 mb-6">
-          {(['task', 'meal', 'workout'] as const).map((t) => (
+          {(['task', 'meal'] as const).map((t) => (
             <button
               key={t}
               onClick={() => openQuickAdd(t)}
@@ -103,33 +92,31 @@ export const QuickAddModal = () => {
           ))}
         </div>
 
-        {currentType !== 'workout' && (
-           <input
-            type="text"
-            placeholder={currentType === 'task' ? "E.g., Read 10 pages" : "E.g., Banana"}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            autoFocus
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white placeholder-zinc-500 mb-6 focus:outline-none focus:border-indigo-500 transition-colors"
-            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-          />
-        )}
-        
-        {currentType === 'workout' && (
-           <input
-            type="text"
-            placeholder="Workout Title (optional)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            autoFocus
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white placeholder-zinc-500 mb-6 focus:outline-none focus:border-indigo-500 transition-colors"
-            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-          />
+        <input
+          type="text"
+          placeholder={currentType === 'task' ? "Task Title" : "Meal Name (e.g. Banana)"}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          autoFocus
+          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white placeholder-zinc-500 mb-4 focus:outline-none focus:border-indigo-500 transition-colors"
+          onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+        />
+
+        {currentType === 'task' && (
+          <div className="mb-6">
+            <label className="block text-xs font-semibold text-zinc-500 uppercase mb-2 ml-1">Time (Required)</label>
+            <input
+              type="time"
+              value={time}
+              onChange={e => setTime(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white focus:outline-none focus:border-indigo-500 dark:[color-scheme:dark]"
+            />
+          </div>
         )}
 
         <button
           onClick={handleSave}
-          className="w-full bg-white text-black font-semibold rounded-xl py-4 hover:bg-zinc-200 transition-colors focus:outline-none"
+          className="w-full bg-white text-black font-semibold rounded-xl py-4 hover:bg-zinc-200 transition-colors focus:outline-none mt-2"
         >
           Add {currentType.charAt(0).toUpperCase() + currentType.slice(1)}
         </button>

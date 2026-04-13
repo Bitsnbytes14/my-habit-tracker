@@ -24,7 +24,7 @@ export default function CalendarPage() {
   // New Event Form State
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState<TaskType>('task');
-  const [newTime, setNewTime] = useState('09:00');
+  const [newTime, setNewTime] = useState('');
   const [newNotes, setNewNotes] = useState('');
 
   // Generate week
@@ -47,7 +47,14 @@ export default function CalendarPage() {
   const todaysTasks = data.tasks.filter((t) => t.date === selectedDate);
 
   const handleAddEvent = () => {
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim()) {
+      alert('Task Title is required!');
+      return;
+    }
+    if (!newTime) {
+      alert('Event Time is required!');
+      return;
+    }
     const newTask: Task = {
       id: `cal-${Date.now()}`,
       title: newTitle,

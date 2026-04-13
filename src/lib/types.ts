@@ -10,21 +10,9 @@ export interface Task {
   notes?: string;
 }
 
-export interface Exercise {
-  id: string;
-  name: string;
-  sets: number;
-  reps: number;
-  weight: number;
-}
-
-export interface Workout {
-  type: 'Push' | 'Pull' | 'Legs' | 'Rest' | '';
-  exercises: Exercise[];
-}
-
 export interface Meal {
   id: string;
+  date: string; // YYYY-MM-DD
   type: 'Breakfast' | 'Lunch' | 'Snack' | 'Dinner';
   name: string;
   protein: number;
@@ -52,8 +40,8 @@ export interface Settings {
 
 export interface LifeOSData {
   tasks: Task[];
-  workouts: Record<string, Workout>; // Key: YYYY-MM-DD
-  meals: Record<string, Meal[]>; // Key: YYYY-MM-DD
+  gym: Record<string, boolean>; // Key: YYYY-MM-DD
+  meals: Meal[];
   prayers: Record<string, Prayers>; // Key: YYYY-MM-DD
   journal: Record<string, string>; // Key: YYYY-MM-DD
   weightLogs: WeightLog[];

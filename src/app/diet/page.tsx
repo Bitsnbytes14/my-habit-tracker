@@ -8,11 +8,11 @@ import { Meal } from '@/lib/types';
 export default function DietPage() {
   const { data, updateData } = useLifeOS();
   const today = getTodayString();
-  const meals = data.meals[today] || [];
+  const meals = data.meals.filter(m => m.date === today);
   const proteinGoal = data.settings?.proteinGoal || 150;
 
   const totalProtein = meals.reduce((sum, m) => sum + (m.protein || 0), 0);
-  const totalCalories = meals.reduce((sum, m) => sum + (m.calories || 0), 0);
+  const remainingProtein = Math.max(0, proteinGoal - totalProtein);
 
   const [type, setType] = useState<Meal['type']>('Breakfast');
   const [name, setName] = useState('');
@@ -24,21 +24,16 @@ export default function DietPage() {
 
     const newMeal: Meal = {
       id: Date.now().toString(),
+      date: today,
       type,
       name,
       protein: parseFloat(protein) || 0,
       calories: calories ? parseFloat(calories) : undefined,
     };
 
-    updateData((prev) => {
-      const todayMeals = prev.meals[today] || [];
-      return {
-        meals: {
-          ...prev.meals,
-          [today]: [...todayMeals, newMeal]
-        }
-      };
-    });
+    updateData((prev) => ({
+      meals: [...prev.meals, newMeal]
+    }));
 
     setName('');
     setProtein('');
@@ -46,15 +41,9 @@ export default function DietPage() {
   };
 
   const handleDeleteMeal = (id: string) => {
-    updateData((prev) => {
-      const todayMeals = prev.meals[today] || [];
-      return {
-        meals: {
-          ...prev.meals,
-          [today]: todayMeals.filter(m => m.id !== id)
-        }
-      };
-    });
+    updateData((prev) => ({
+      meals: prev.meals.filter(m => m.id !== id)
+    }));
   };
 
   const mealTypes: Meal['type'][] = ['Breakfast', 'Lunch', 'Snack', 'Dinner'];
@@ -70,15 +59,15 @@ export default function DietPage() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
           <div className="flex justify-between items-end mb-4 relative z-10">
             <div>
-              <p className="text-sm text-zinc-400 font-semibold uppercase tracking-widest mb-1">Protein</p>
+              <p className="text-sm text-zinc-400 font-semibold uppercase tracking-widest mb-1">Total</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-4xl font-black text-white">{Math.round(totalProtein)}g</span>
                 <span className="text-zinc-500 font-medium">/ {proteinGoal}g</span>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-zinc-400 font-semibold uppercase tracking-widest mb-1">Calories</p>
-              <span className="text-2xl font-bold text-white">{Math.round(totalCalories)} <span className="text-sm text-zinc-500">kcal</span></span>
+              <p className="text-sm text-zinc-400 font-semibold uppercase tracking-widest mb-1">Remaining</p>
+              <span className="text-2xl font-bold text-orange-400">{Math.round(remainingProtein)}g</span>
             </div>
           </div>
           

@@ -78,8 +78,7 @@ export default function ProgressPage() {
   });
 
   const gymStreak = calculateStreak((dateStr) => {
-    const w = data.workouts[dateStr];
-    return w ? (w.type === 'Rest' || (w.exercises && w.exercises.length > 0)) : false;
+    return data.gym[dateStr] === true;
   });
 
   const journalStreak = calculateStreak((dateStr) => {

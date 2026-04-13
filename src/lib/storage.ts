@@ -4,8 +4,8 @@ const STORAGE_KEY = 'lifeOS';
 
 export const getDefaultData = (): LifeOSData => ({
   tasks: [],
-  workouts: {},
-  meals: {},
+  gym: {},
+  meals: [],
   prayers: {},
   journal: {},
   weightLogs: [],
@@ -21,10 +21,24 @@ export const getLifeOSData = (): LifeOSData => {
 
     const parsed = JSON.parse(raw);
     
+    // Quick migration / fallback checking for new types
+    let meals = parsed.meals || [];
+    if (!Array.isArray(meals)) {
+      // If it's the old object struct, reset to [] or map it
+      meals = [];
+    }
+
+    let gym = parsed.gym || {};
+    if (parsed.workouts && !parsed.gym) {
+      gym = {}; // Wipe old workouts
+    }
+    
     // Merge with defaults to ensure all keys exist
     return {
       ...getDefaultData(),
       ...parsed,
+      gym,
+      meals,
       settings: { ...defaultSettings, ...(parsed.settings || {}) },
     };
   } catch (err) {

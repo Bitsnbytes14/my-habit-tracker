@@ -6,7 +6,7 @@ import { getTodayString } from '@/lib/storage';
 import { calculateDailyScore } from '@/lib/scoring';
 
 export default function Dashboard() {
-  const { data, openQuickAdd } = useLifeOS();
+  const { data, updateData, openQuickAdd } = useLifeOS();
   const today = getTodayString();
 
   // Score Calculation
@@ -19,20 +19,35 @@ export default function Dashboard() {
   const tasksToday = data.tasks.filter(t => t.date === today);
   const tasksDone = tasksToday.filter(t => t.done).length;
 
-  const mealsToday = data.meals[today] || [];
+  const mealsToday = data.meals.filter(m => m.date === today);
   const proteinGoal = data.settings?.proteinGoal || 150;
   const totalProtein = mealsToday.reduce((sum, m) => sum + (m.protein || 0), 0);
+  const remainingProtein = Math.max(0, proteinGoal - totalProtein);
 
-  const workoutToday = data.workouts[today];
-  const gymDone = workoutToday && (workoutToday.type === 'Rest' || (workoutToday.exercises && workoutToday.exercises.length > 0));
+  const gymDone = data.gym[today] === true;
+  const latestWeight = data.weightLogs.length > 0 ? data.weightLogs[data.weightLogs.length - 1].weight : null;
 
   const displayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
+  const toggleGym = () => {
+    updateData(prev => ({
+      gym: { ...prev.gym, [today]: !prev.gym[today] }
+    }));
+  };
+
   return (
     <div className="p-6 pb-24">
-      <header className="mb-8 mt-4">
-        <h1 className="text-zinc-400 text-sm font-medium uppercase tracking-wider mb-1">Today</h1>
-        <h2 className="text-3xl font-bold text-white tracking-tight">{displayDate}</h2>
+      <header className="mb-8 mt-4 flex justify-between items-end">
+        <div>
+          <h1 className="text-zinc-400 text-sm font-medium uppercase tracking-wider mb-1">Today</h1>
+          <h2 className="text-3xl font-bold text-white tracking-tight">{displayDate}</h2>
+        </div>
+        {latestWeight !== null && (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2">
+            <p className="text-xs text-zinc-500 uppercase font-bold text-center">Weight</p>
+            <p className="text-lg font-bold text-white text-center">{latestWeight}<span className="text-sm font-normal text-zinc-500">kg</span></p>
+          </div>
+        )}
       </header>
 
       {/* Score Card */}
@@ -61,11 +76,22 @@ export default function Dashboard() {
 
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col justify-between">
           <h4 className="text-zinc-400 text-xs font-semibold uppercase mb-2">Protein</h4>
-          <p className="text-2xl font-bold text-white">{Math.round(totalProtein)}g <span className="text-sm font-normal text-zinc-500">/ {proteinGoal}g</span></p>
+          <div>
+            <p className="text-2xl font-bold text-white">{Math.round(totalProtein)}g <span className="text-sm font-normal text-zinc-500">/ {proteinGoal}g</span></p>
+            <p className="text-xs text-orange-400 font-semibold mt-1">{Math.round(remainingProtein)}g remaining</p>
+          </div>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col justify-between relative overflow-hidden">
-          <h4 className="text-zinc-400 text-xs font-semibold uppercase mb-2">Gym</h4>
+        <div 
+          onClick={toggleGym}
+          className={`cursor-pointer border rounded-2xl p-4 flex flex-col justify-between transition-colors ${
+            gymDone ? 'bg-green-500/10 border-green-500/30' : 'bg-zinc-900 border-zinc-800 hover:bg-zinc-800'
+          }`}
+        >
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="text-zinc-400 text-xs font-semibold uppercase">Gym</h4>
+            <div className={`w-4 h-4 rounded-full border-2 ${gymDone ? 'bg-green-500 border-green-500' : 'border-zinc-500'}`}></div>
+          </div>
           <p className={`text-xl tracking-tight font-bold ${gymDone ? 'text-green-400' : 'text-zinc-500'}`}>
             {gymDone ? 'Completed' : 'Pending'}
           </p>
@@ -81,18 +107,6 @@ export default function Dashboard() {
             className="flex-1 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-xl py-3 text-sm font-medium text-white shadow-sm border border-zinc-700/50"
           >
             + Task
-          </button>
-          <button 
-            onClick={() => openQuickAdd('meal')}
-            className="flex-1 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-xl py-3 text-sm font-medium text-white shadow-sm border border-zinc-700/50"
-          >
-            + Meal
-          </button>
-          <button 
-            onClick={() => openQuickAdd('workout')}
-            className="flex-1 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-xl py-3 text-sm font-medium text-white shadow-sm border border-zinc-700/50"
-          >
-            + Workout
           </button>
         </div>
       </section>
