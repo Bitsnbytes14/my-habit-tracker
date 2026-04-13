@@ -29,11 +29,13 @@ export default function JournalPage() {
     .sort((a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime())
     .slice(0, 5);
 
+  const displayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
   return (
     <div className="p-6 pb-24 h-screen flex flex-col">
       <header className="mb-6 mt-4">
-        <h1 className="text-zinc-400 text-sm font-medium uppercase tracking-wider mb-1">Today&apos;s Entry</h1>
-        <h2 className="text-3xl font-bold text-white tracking-tight">Journal</h2>
+        <h1 className="text-zinc-400 text-sm font-medium uppercase tracking-wider mb-1">Journal</h1>
+        <h2 className="text-3xl font-bold text-white tracking-tight">{displayDate}</h2>
       </header>
 
       {/* Editor Main */}

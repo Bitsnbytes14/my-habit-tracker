@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useLifeOS } from '@/components/LifeOSProvider';
 import { getTodayString } from '@/lib/storage';
 import { calculateDailyScore } from '@/lib/scoring';
@@ -29,6 +30,9 @@ export default function Dashboard() {
 
   const todos = data.todos || [];
   const todosDone = todos.filter(t => t.done).length;
+
+  const journalToday = data.journal[today] || '';
+  const hasJournalToday = journalToday.trim().length > 0;
 
   const displayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -104,7 +108,17 @@ export default function Dashboard() {
           <h4 className="text-zinc-400 text-xs font-semibold uppercase mb-2">To-Dos (Global)</h4>
           <div className="flex justify-between items-baseline">
             <p className="text-2xl font-bold text-white">{todosDone} <span className="text-sm font-normal text-zinc-500">/ {todos.length}</span></p>
-            <a href="/todos" className="text-sm text-indigo-400 font-semibold hover:text-indigo-300">View List →</a>
+            <Link href="/todos" className="text-sm text-indigo-400 font-semibold hover:text-indigo-300">View List →</Link>
+          </div>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col justify-between col-span-2">
+          <h4 className="text-zinc-400 text-xs font-semibold uppercase mb-2">Journal</h4>
+          <div className="flex justify-between items-baseline">
+            <p className={`text-xl font-bold tracking-tight ${hasJournalToday ? 'text-green-400' : 'text-zinc-500'}`}>
+              {hasJournalToday ? 'Journal done' : 'Not written'}
+            </p>
+            <Link href="/journal" className="text-sm text-indigo-400 font-semibold hover:text-indigo-300">Open Journal →</Link>
           </div>
         </div>
       </section>
