@@ -12,15 +12,25 @@ export default function JournalPage() {
   const [entry, setEntry] = useState(todayEntry);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Sync state if provider data loads/changes
+  // Only load from localStorage on mount, not on every data change
   useEffect(() => {
-    setEntry(data.journal[today] || '');
-  }, [data.journal, today]);
+    const savedEntry = data.journal[today] || '';
+    setEntry(savedEntry);
+  }, []); // Empty deps = run once on mount
 
   const handleSave = (value: string) => {
     updateData((prev) => ({
       journal: { ...prev.journal, [today]: value }
     }));
+  };
+
+  const handleClear = () => {
+    if (confirm('Clear today\'s journal entry? This cannot be undone.')) {
+      const newJournal = { ...data.journal };
+      delete newJournal[today];
+      updateData({ journal: newJournal });
+      setEntry('');
+    }
   };
 
   // Get last 5 entries excluding today
@@ -47,8 +57,18 @@ export default function JournalPage() {
           placeholder="What's on your mind today?"
           className="w-full h-full bg-zinc-900 border border-zinc-800 rounded-2xl p-6 text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 resize-none transition-all"
         />
-        <div className="absolute bottom-4 right-4 text-xs font-semibold text-zinc-500 bg-zinc-950/80 px-2 py-1 rounded backdrop-blur">
-          Auto-saves on blur
+        <div className="absolute bottom-4 right-4 flex items-center gap-3">
+          {entry.trim() && (
+            <button
+              onClick={handleClear}
+              className="text-xs font-semibold text-zinc-500 hover:text-red-400 bg-zinc-950/80 px-2 py-1 rounded backdrop-blur transition-colors"
+            >
+              Clear
+            </button>
+          )}
+          <span className="text-xs font-semibold text-zinc-500 bg-zinc-950/80 px-2 py-1 rounded backdrop-blur">
+            Auto-saves on blur
+          </span>
         </div>
       </section>
 
