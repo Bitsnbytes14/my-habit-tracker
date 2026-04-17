@@ -8,7 +8,7 @@ import { calculateDailyScore } from '@/lib/scoring';
 import { getGymStreak, getPrayerStreak, getProteinStreak } from '@/lib/streaks';
 
 export default function Dashboard() {
-  const { data, updateData, openQuickAdd } = useLifeOS();
+  const { data, updateData, openQuickAdd, showFeedback } = useLifeOS();
   const today = getTodayString();
 
   // Score Calculation
@@ -24,181 +24,192 @@ export default function Dashboard() {
   const mealsToday = data.meals.filter(m => m.date === today);
   const proteinGoal = data.settings?.proteinGoal || 150;
   const totalProtein = mealsToday.reduce((sum, m) => sum + (m.protein || 0), 0);
-  const remainingProtein = Math.max(0, proteinGoal - totalProtein);
 
   const gymDone = data.gym[today] === true;
-  const codingDone = data.coding?.[today] === true;
-  
+
   const latestWeight = data.weightLogs.length > 0 ? data.weightLogs[data.weightLogs.length - 1].weight : null;
-
-  const todos = data.todos || [];
-  const todosDone = todos.filter(t => t.done).length;
-
-  const journalToday = data.journal[today] || '';
-  const hasJournalToday = journalToday.trim().length > 0;
-
-  const displayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   const gymStreak = getGymStreak(data);
   const prayerStreak = getPrayerStreak(data);
   const proteinStreak = getProteinStreak(data);
 
   const toggleGym = () => {
+    const wasDone = data.gym[today] === true;
     updateData(prev => ({
       gym: { ...prev.gym, [today]: !prev.gym[today] }
     }));
-  };
-
-  const toggleCoding = () => {
-    updateData(prev => ({
-      coding: { ...(prev.coding || {}), [today]: !(prev.coding?.[today]) }
-    }));
+    showFeedback(wasDone ? 'Gym marked undone' : 'Gym marked done ✓', 'success');
   };
 
   return (
-    <div className="p-6 pb-24">
-      <header className="mb-8 mt-4 flex justify-between items-end">
+    <div className="p-4 pb-24">
+      {/* HEADER */}
+      <header className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-zinc-400 text-sm font-medium uppercase tracking-wider mb-1">Today</h1>
-          <h2 className="text-3xl font-bold text-white tracking-tight">{displayDate}</h2>
+          <p className="text-zinc-500 text-sm font-medium uppercase tracking-wider">{new Date().toLocaleDateString('en-US', { weekday: 'short' })}</p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">{new Date().getDate()} {new Date().toLocaleDateString('en-US', { month: 'short' })}</h1>
         </div>
         {latestWeight !== null && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2">
-            <p className="text-xs text-zinc-500 uppercase font-bold text-center">Weight</p>
-            <p className="text-lg font-bold text-white text-center">{latestWeight}<span className="text-sm font-normal text-zinc-500">kg</span></p>
+          <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-xl px-3 py-2">
+            <p className="text-[10px] text-zinc-500 uppercase font-bold text-center">Weight</p>
+            <p className="text-base font-bold text-white text-center">{latestWeight}<span className="text-xs font-normal text-zinc-500">kg</span></p>
           </div>
         )}
       </header>
 
-      {/* Score Card */}
-      <section className="mb-8">
-        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-6 shadow-lg shadow-indigo-500/20 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mt-10 -mr-10"></div>
-          <p className="text-white/80 font-medium tracking-wide mb-2">Life Score</p>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-6xl font-black text-white tracking-tighter">{score}</h3>
-            <span className="text-white/60 font-semibold text-xl">/ 100</span>
+      {/* TOP SECTION: Daily Score + Key Metrics */}
+      <section className="mb-6 space-y-4">
+        {/* Daily Score */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 p-5 shadow-lg shadow-blue-500/20">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mt-6 -mr-6" />
+          <p className="text-white/80 text-sm font-medium tracking-wide mb-1">Daily Score</p>
+          <div className="flex items-baseline gap-1">
+            <h2 className="text-5xl font-black text-white tracking-tighter">{score}</h2>
+            <span className="text-white/60 font-semibold text-lg">/ 100</span>
           </div>
+        </div>
+
+        {/* Protein & Prayer Progress Row */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Protein Card */}
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-full blur-2xl -mr-4 -mt-4" />
+            <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider mb-2">Protein</p>
+            <div className="flex items-baseline gap-1 mb-2">
+              <span className="text-xl font-black text-white">{Math.round(totalProtein)}g</span>
+              <span className="text-zinc-600 text-sm">/ {proteinGoal}g</span>
+            </div>
+            <div className="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800/50">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${totalProtein >= proteinGoal ? 'bg-green-500' : 'bg-blue-500'}`}
+                style={{ width: `${Math.min((totalProtein / proteinGoal) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Prayer Card */}
+          <Link href="/namaz" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-full blur-2xl -mr-4 -mt-4" />
+            <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider mb-2">Prayers</p>
+            <div className="flex items-baseline gap-1 mb-2">
+              <span className="text-xl font-black text-white">{prayersDone}</span>
+              <span className="text-zinc-600 text-sm">/ 5</span>
+            </div>
+            <div className="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800/50">
+              <div
+                className="h-full rounded-full transition-all duration-500 bg-blue-500"
+                style={{ width: `${(prayersDone / 5) * 100}%` }}
+              />
+            </div>
+          </Link>
         </div>
       </section>
 
-      {/* Streaks Widget */}
-      <section className="mb-8">
-        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Streaks</h3>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex flex-col items-center shadow-sm">
-             <span className="text-xl mb-1">🔥</span>
-             <span className="text-sm font-bold text-white">{gymStreak} Gym</span>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex flex-col items-center shadow-sm">
-             <span className="text-xl mb-1">🕋</span>
-             <span className="text-sm font-bold text-white">{prayerStreak} Prayers</span>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 flex flex-col items-center shadow-sm">
-             <span className="text-xl mb-1">🥩</span>
-             <span className="text-sm font-bold text-white">{proteinStreak} Protein</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Protein Progress */}
-      <section className="mb-8">
-        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Protein Progress</h3>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-          <div className="flex justify-between items-end mb-4 relative z-10">
-            <div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-white">{Math.round(totalProtein)}g</span>
-                <span className="text-zinc-500 font-medium text-sm">/ {proteinGoal}g</span>
+      {/* MIDDLE SECTION: CARD GRID */}
+      <section className="mb-6">
+        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Today&apos;s Status</h3>
+        <div className="grid grid-cols-2 gap-3">
+          {/* Gym Card */}
+          <div
+            onClick={toggleGym}
+            className={`relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] ${gymDone ? 'bg-green-900/30 border-2 border-green-500' : 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/70'}`}
+          >
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Gym</span>
+              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${gymDone ? 'bg-green-500 border-green-500' : 'border-zinc-600'}`}>
+                {gymDone && <span className="text-zinc-900 text-xs font-black">✓</span>}
               </div>
             </div>
-            <div className="text-right">
-              <span className="text-lg font-bold text-orange-400">{Math.round(remainingProtein)}g left</span>
-            </div>
-          </div>
-          
-          <div className="w-full bg-zinc-950 h-3 rounded-full overflow-hidden border border-zinc-800 relative z-10">
-            <div 
-              className={`h-full transition-all duration-700 ${totalProtein >= proteinGoal ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-indigo-500'}`}
-              style={{ width: `${Math.min((totalProtein / proteinGoal) * 100, 100)}%` }}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Non-Negotiables Section */}
-      <section className="mb-8">
-        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Non-Negotiables</h3>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden divide-y divide-zinc-800/50">
-          {/* Gym Toggle */}
-          <div onClick={toggleGym} className="flex justify-between items-center p-4 cursor-pointer hover:bg-zinc-800/50 transition-colors">
-            <span className="font-semibold text-white">Gym Completed</span>
-            <div className={`w-6 h-6 rounded-md border-2 flex flex-shrink-0 items-center justify-center transition-colors ${gymDone ? 'bg-green-500 border-green-500' : 'border-zinc-600'}`}>
-               {gymDone && <span className="text-zinc-900 text-xs font-black">✓</span>}
-            </div>
-          </div>
-          {/* Coding Toggle */}
-          <div onClick={toggleCoding} className="flex justify-between items-center p-4 cursor-pointer hover:bg-zinc-800/50 transition-colors">
-            <span className="font-semibold text-white">Coding / Work</span>
-            <div className={`w-6 h-6 rounded-md border-2 flex flex-shrink-0 items-center justify-center transition-colors ${codingDone ? 'bg-green-500 border-green-500' : 'border-zinc-600'}`}>
-               {codingDone && <span className="text-zinc-900 text-xs font-black">✓</span>}
-            </div>
-          </div>
-          {/* Prayers Indicator */}
-           <Link href="/namaz" className="flex justify-between items-center p-4 hover:bg-zinc-800/50 transition-colors group">
-             <span className="font-semibold text-white">All 5 Prayers</span>
-             <div className="flex items-center gap-2">
-               {prayersDone === 5 ? (
-                 <span className="text-green-500 font-bold">Done</span>
-               ) : (
-                 <span className="text-sm font-semibold text-zinc-400">{prayersDone}/5</span>
-               )}
-               <span className="text-zinc-600 group-hover:text-zinc-400 transition-colors text-sm">→</span>
-             </div>
-           </Link>
-        </div>
-      </section>
-
-      {/* Tasks & Trackers Grid */}
-      <section className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col justify-between">
-          <h4 className="text-zinc-400 text-xs font-semibold uppercase mb-2">Tasks</h4>
-          <p className="text-2xl font-bold text-white mb-2">{tasksDone} <span className="text-sm font-normal text-zinc-500">/ {tasksToday.length}</span></p>
-          <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden border border-zinc-800">
-             <div className="h-full bg-indigo-500 transition-all" style={{ width: `${tasksToday.length ? (tasksDone / tasksToday.length) * 100 : 0}%` }} />
-          </div>
-        </div>
-
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col justify-between">
-          <h4 className="text-zinc-400 text-xs font-semibold uppercase mb-2">To-Dos</h4>
-          <div className="flex justify-between items-baseline mb-2">
-            <p className="text-2xl font-bold text-white">{todosDone} <span className="text-sm font-normal text-zinc-500">/ {todos.length}</span></p>
-          </div>
-          <Link href="/todos" className="text-xs text-indigo-400 font-semibold hover:text-indigo-300 w-fit">View List →</Link>
-        </div>
-
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col justify-between col-span-2">
-          <h4 className="text-zinc-400 text-xs font-semibold uppercase mb-2">Journal</h4>
-          <div className="flex justify-between items-baseline">
-            <p className={`text-lg font-bold tracking-tight ${hasJournalToday ? 'text-green-400' : 'text-zinc-500'}`}>
-              {hasJournalToday ? 'Journal done' : 'Not written yet'}
+            <p className={`text-xl font-black tracking-tight ${gymDone ? 'text-green-400' : 'text-white'}`}>
+              {gymDone ? 'Done' : 'Pending'}
             </p>
-            <Link href="/journal" className="text-xs text-indigo-400 font-semibold hover:text-indigo-300">Open Journal →</Link>
           </div>
+
+          {/* Diet Card */}
+          <Link href="/diet" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
+            <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider block mb-2">Protein</span>
+            <p className="text-xl font-black text-white tracking-tight">
+              {Math.round(totalProtein)}<span className="text-sm font-normal text-zinc-600">/ {proteinGoal}g</span>
+            </p>
+          </Link>
+
+          {/* Tasks Card */}
+          <Link href="/calendar" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
+            <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider block mb-2">Tasks</span>
+            <p className="text-xl font-black text-white tracking-tight">
+              {tasksDone}<span className="text-sm font-normal text-zinc-600">/ {tasksToday.length}</span>
+            </p>
+            <div className="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800/50 mt-2">
+              <div
+                className="h-full rounded-full transition-all duration-500 bg-indigo-500"
+                style={{ width: `${tasksToday.length ? (tasksDone / tasksToday.length) * 100 : 0}%` }}
+              />
+            </div>
+          </Link>
+
+          {/* Namaz Card */}
+          <Link href="/namaz" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
+            <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider block mb-2">Namaz</span>
+            <p className="text-xl font-black text-white tracking-tight">
+              {prayersDone}<span className="text-sm font-normal text-zinc-600">/ 5</span>
+            </p>
+            <div className="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800/50 mt-2">
+              <div
+                className="h-full rounded-full transition-all duration-500 bg-purple-500"
+                style={{ width: `${(prayersDone / 5) * 100}%` }}
+              />
+            </div>
+          </Link>
         </div>
       </section>
 
-      {/* Quick Add Actions */}
-      <section>
-        <h3 className="text-zinc-300 font-semibold mb-4">Quick Actions</h3>
-        <div className="flex gap-3">
-          <button 
-            onClick={() => openQuickAdd('task')}
-            className="flex-1 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded-xl py-3 text-sm font-medium text-white shadow-sm border border-zinc-700/50"
-          >
-            + Task
-          </button>
+      {/* BOTTOM SECTION: Streaks & Quick Actions */}
+      <section className="space-y-4">
+        {/* Streaks */}
+        <div>
+          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Current Streaks</h3>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-xl p-3 flex flex-col items-center shadow-sm">
+              <span className="text-lg mb-1">🔥</span>
+              <span className="text-base font-bold text-white">{gymStreak}</span>
+              <span className="text-[10px] text-zinc-500 uppercase">Gym</span>
+            </div>
+            <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-xl p-3 flex flex-col items-center shadow-sm">
+              <span className="text-lg mb-1">🕋</span>
+              <span className="text-base font-bold text-white">{prayerStreak}</span>
+              <span className="text-[10px] text-zinc-500 uppercase">Prayers</span>
+            </div>
+            <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-xl p-3 flex flex-col items-center shadow-sm">
+              <span className="text-lg mb-1">🥩</span>
+              <span className="text-base font-bold text-white">{proteinStreak}</span>
+              <span className="text-[10px] text-zinc-500 uppercase">Protein</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div>
+          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Quick Actions</h3>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => openQuickAdd('task')}
+              className="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-white rounded-xl py-3 text-sm font-semibold transition-colors active:scale-[0.98]"
+            >
+              + Task
+            </button>
+            <button
+              onClick={() => openQuickAdd('meal')}
+              className="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-white rounded-xl py-3 text-sm font-semibold transition-colors active:scale-[0.98]"
+            >
+              + Meal
+            </button>
+            <Link
+              href="/progress"
+              className="bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-white rounded-xl py-3 text-sm font-semibold transition-colors text-center block"
+            >
+              + Weight
+            </Link>
+          </div>
         </div>
       </section>
     </div>

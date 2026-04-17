@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from 'react';
 import { useLifeOS } from '@/components/LifeOSProvider';
 import { getTodayString } from '@/lib/storage';
@@ -13,6 +14,7 @@ export default function JournalPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Only load from localStorage on mount, not on every data change
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     const savedEntry = data.journal[today] || '';
     setEntry(savedEntry);
@@ -42,10 +44,11 @@ export default function JournalPage() {
   const displayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
-    <div className="p-6 pb-24 h-screen flex flex-col">
-      <header className="mb-6 mt-4">
-        <h1 className="text-zinc-400 text-sm font-medium uppercase tracking-wider mb-1">Journal</h1>
-        <h2 className="text-3xl font-bold text-white tracking-tight">{displayDate}</h2>
+    <div className="p-4 pb-24 h-screen flex flex-col">
+      {/* Header */}
+      <header className="mb-6">
+        <p className="text-zinc-500 text-sm font-medium uppercase tracking-wider mb-1">Journal</p>
+        <h1 className="text-2xl font-bold text-white tracking-tight">{displayDate}</h1>
       </header>
 
       {/* Editor Main */}
@@ -55,7 +58,7 @@ export default function JournalPage() {
           onChange={(e) => setEntry(e.target.value)}
           onBlur={() => handleSave(entry)}
           placeholder="What's on your mind today?"
-          className="w-full h-full bg-zinc-900 border border-zinc-800 rounded-2xl p-6 text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 resize-none transition-all"
+          className="w-full h-full bg-zinc-900 border border-zinc-800 rounded-2xl p-5 text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 resize-none transition-all text-base"
         />
         <div className="absolute bottom-4 right-4 flex items-center gap-3">
           {entry.trim() && (
@@ -83,14 +86,14 @@ export default function JournalPage() {
 
               return (
                 <div key={date} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden transition-all">
-                  <button 
+                  <button
                     onClick={() => setExpandedId(isExpanded ? null : date)}
-                    className="w-full flex justify-between items-center p-4 text-left"
+                    className="w-full flex justify-between items-center p-4 text-left hover:bg-zinc-800/50 transition-colors"
                   >
                     <span className="font-semibold text-zinc-300">{pxDate}</span>
-                    <span className="text-zinc-600 font-bold">{isExpanded ? '−' : '+'}</span>
+                    <span className="text-zinc-600 font-bold text-lg">{isExpanded ? '−' : '+'}</span>
                   </button>
-                  
+
                   {isExpanded && (
                     <div className="px-4 pb-4 pt-1 border-t border-zinc-800/50 text-sm text-zinc-400 whitespace-pre-wrap">
                       {text}

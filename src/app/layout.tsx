@@ -4,6 +4,7 @@ import "./globals.css";
 import { LifeOSProvider } from "@/components/LifeOSProvider";
 import { BottomNav } from "@/components/BottomNav";
 import { QuickAddModal } from "@/components/QuickAddModal";
+import { FeedbackToast } from "@/components/FeedbackToast";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -34,6 +35,7 @@ export default function RootLayout({
             {children}
             <BottomNav />
             <QuickAddModal />
+            <FeedbackToast />
           </main>
         </LifeOSProvider>
       </body>

@@ -13,6 +13,7 @@ export default function DietPage() {
 
   const totalProtein = meals.reduce((sum, m) => sum + (m.protein || 0), 0);
   const remainingProtein = Math.max(0, proteinGoal - totalProtein);
+  const progress = Math.min((totalProtein / proteinGoal) * 100, 100);
 
   const [type, setType] = useState<Meal['type']>('Breakfast');
   const [name, setName] = useState('');
@@ -49,36 +50,41 @@ export default function DietPage() {
   const mealTypes: Meal['type'][] = ['Breakfast', 'Lunch', 'Snack', 'Dinner'];
 
   return (
-    <div className="p-6 pb-24">
-      <header className="mb-8 mt-4 relative">
-        <h1 className="text-zinc-400 text-sm font-medium uppercase tracking-wider mb-1">Diet Tracking</h1>
-        <h2 className="text-3xl font-bold text-white tracking-tight leading-tight">Macros & Meals</h2>
-        
-        {/* Protein Tracker Ring / Bar */}
-        <div className="mt-8 bg-zinc-900 border border-zinc-800 rounded-2xl p-6 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
-          <div className="flex justify-between items-end mb-4 relative z-10">
+    <div className="p-4 pb-24">
+      {/* Header */}
+      <header className="mb-6">
+        <p className="text-zinc-500 text-sm font-medium uppercase tracking-wider mb-1">Diet</p>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Protein Tracking</h1>
+      </header>
+
+      {/* Protein Summary Card */}
+      <section className="mb-6">
+        <div className="relative overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-800 p-5 shadow-sm">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/10 rounded-full blur-2xl -mr-6 -mt-6" />
+          <div className="flex justify-between items-end mb-4 relative">
             <div>
-              <p className="text-sm text-zinc-400 font-semibold uppercase tracking-widest mb-1">Total</p>
+              <p className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-1">Consumed</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black text-white">{Math.round(totalProtein)}g</span>
-                <span className="text-zinc-500 font-medium">/ {proteinGoal}g</span>
+                <span className="text-4xl font-black text-white">{Math.round(totalProtein)}</span>
+                <span className="text-zinc-600 font-medium">/ {proteinGoal}g</span>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-zinc-400 font-semibold uppercase tracking-widest mb-1">Remaining</p>
-              <span className="text-2xl font-bold text-orange-400">{Math.round(remainingProtein)}g</span>
+              <p className="text-zinc-500 text-xs uppercase font-bold tracking-wider mb-1">Remaining</p>
+              <span className={`text-2xl font-black tracking-tight ${remainingProtein <= 0 ? 'text-green-500' : 'text-yellow-500'}`}>
+                {Math.round(remainingProtein)}g
+              </span>
             </div>
           </div>
-          
-          <div className="w-full bg-zinc-950 h-3 rounded-full overflow-hidden border border-zinc-800 relative z-10">
-            <div 
-              className={`h-full transition-all duration-700 ${totalProtein >= proteinGoal ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-indigo-500'}`}
-              style={{ width: `${Math.min((totalProtein / proteinGoal) * 100, 100)}%` }}
+
+          <div className="w-full bg-zinc-950 rounded-full h-3 border border-zinc-800/50">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${totalProtein >= proteinGoal ? 'bg-green-500' : 'bg-blue-500'}`}
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
-      </header>
+      </section>
 
       {/* Add Meal Form */}
       <section className="mb-8">
@@ -90,53 +96,53 @@ export default function DietPage() {
                  key={t}
                  onClick={() => setType(t)}
                  className={`flex-1 min-w-[70px] px-3 py-2 rounded-lg text-sm font-medium capitalize transition-colors ${
-                    type === t ? 'bg-green-600/20 text-green-400' : 'text-zinc-500 hover:text-zinc-300'
+                    type === t ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'text-zinc-500 hover:text-zinc-300'
                  }`}
                >
                  {t}
                </button>
              ))}
-          </div>
+           </div>
 
-          <input
-            type="text"
-            placeholder="Meal Name (e.g. Chicken Rice)"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-white focus:outline-none focus:border-green-500 transition-colors"
-          />
+           <input
+             type="text"
+             placeholder="Meal Name (e.g. Chicken Rice)"
+             value={name}
+             onChange={e => setName(e.target.value)}
+             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-colors"
+           />
 
-          <div className="flex gap-3">
-            <div className="flex-1 relative">
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-bold">g</span>
-              <input
-                type="number"
-                placeholder="Protein"
-                value={protein}
-                onChange={e => setProtein(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-4 pr-8 text-white focus:outline-none focus:border-green-500"
-              />
-            </div>
-            <div className="flex-1 relative">
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-bold">kcal</span>
-              <input
-                type="number"
-                placeholder="Calories"
-                value={calories}
-                onChange={e => setCalories(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-4 pr-12 text-white focus:outline-none focus:border-green-500"
-              />
-            </div>
-          </div>
+           <div className="flex gap-3">
+             <div className="flex-1 relative">
+               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-bold">g</span>
+               <input
+                 type="number"
+                 placeholder="Protein"
+                 value={protein}
+                 onChange={e => setProtein(e.target.value)}
+                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 pr-8 text-white focus:outline-none focus:border-blue-500 transition-colors"
+               />
+             </div>
+             <div className="flex-1 relative">
+               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm font-bold">kcal</span>
+               <input
+                 type="number"
+                 placeholder="Calories"
+                 value={calories}
+                 onChange={e => setCalories(e.target.value)}
+                 className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 pr-12 text-white focus:outline-none focus:border-blue-500 transition-colors"
+               />
+             </div>
+           </div>
 
-          <button
-             onClick={handleAddMeal}
-             className="w-full bg-white text-black hover:bg-zinc-200 font-bold tracking-wide uppercase rounded-xl py-4 transition-colors"
-           >
-             Save Meal
-           </button>
-        </div>
-      </section>
+           <button
+              onClick={handleAddMeal}
+              className="w-full bg-blue-600 text-white hover:bg-blue-500 font-bold tracking-wide uppercase rounded-xl py-4 transition-colors shadow-lg shadow-blue-600/20"
+            >
+              Save Meal
+            </button>
+         </div>
+       </section>
 
       {/* Meals Log */}
       <section>
@@ -146,21 +152,22 @@ export default function DietPage() {
             No meals logged today yet.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {meals.map((m) => (
-              <div key={m.id} className="flex justify-between items-center bg-zinc-950 border border-zinc-800 p-4 rounded-xl group relative overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500/50"></div>
-                <div className="pl-2">
-                  <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">{m.type}</p>
-                  <h4 className="font-bold text-white mb-1">{m.name}</h4>
-                  <p className="text-sm font-medium text-zinc-400">
-                    <span className="text-green-400 font-bold">{m.protein}g</span> protein
-                    {m.calories ? ` • ${m.calories} kcal` : ''}
+              <div key={m.id} className="flex justify-between items-center bg-zinc-900 border border-zinc-800 p-4 rounded-xl group relative overflow-hidden">
+                <div className="flex-1">
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">{m.type}</span>
+                    <h4 className="font-bold text-white">{m.name}</h4>
+                  </div>
+                  <p className="text-sm text-zinc-400">
+                    <span className="font-bold text-green-400">{m.protein}g</span> protein
+                    {m.calories ? ` • <span className="text-zinc-500">${m.calories} kcal</span>` : ''}
                   </p>
                 </div>
                 <button 
                   onClick={() => handleDeleteMeal(m.id)}
-                  className="w-10 h-10 flex items-center justify-center text-zinc-600 hover:text-red-500 bg-zinc-900 rounded-full transition-colors"
+                  className="w-10 h-10 flex items-center justify-center text-zinc-600 hover:text-red-500 bg-zinc-950 rounded-full transition-colors"
                 >
                   ✕
                 </button>
