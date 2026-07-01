@@ -36,7 +36,7 @@ export const getPrayerStreak = (data: LifeOSData) => {
 };
 
 export const getProteinStreak = (data: LifeOSData) => {
-  const proteinGoal = data.settings?.proteinGoal || 150;
+  const proteinGoal = data.settings?.proteinGoal || 120;
   return calculateStreak((dateStr) => {
     const dayMeals = data.meals.filter(m => m.date === dateStr);
     // If no meals were logged that day, they definitely didn't hit it

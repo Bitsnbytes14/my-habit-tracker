@@ -23,7 +23,7 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
 
   // 3. Protein goal (15pts)
   const todayMeals = data.meals.filter((m) => m.date === dateStr);
-  const proteinGoal = data.settings?.proteinGoal || 150;
+  const proteinGoal = data.settings?.proteinGoal || 120;
   const totalProtein = todayMeals.reduce((acc, meal) => acc + (meal.protein || 0), 0);
   const proteinScore = Math.min((totalProtein / proteinGoal) * 15, 15);
   score += proteinScore;

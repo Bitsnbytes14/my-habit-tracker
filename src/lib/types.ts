@@ -58,7 +58,7 @@ export interface LifeOSData {
 }
 
 export const defaultSettings: Settings = {
-  proteinGoal: 150,
+  proteinGoal: 120,
 };
 
 export const defaultPrayers: Prayers = {

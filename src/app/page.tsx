@@ -22,8 +22,10 @@ export default function Dashboard() {
   const tasksDone = activeTodos.filter(t => t.done).length;
 
   const mealsToday = data.meals.filter(m => m.date === today);
-  const proteinGoal = data.settings?.proteinGoal || 150;
+  const proteinGoal = data.settings?.proteinGoal || 120;
+  const calorieGoal = 2000;
   const totalProtein = mealsToday.reduce((sum, m) => sum + (m.protein || 0), 0);
+  const totalCalories = mealsToday.reduce((sum, m) => sum + (m.calories || 0), 0);
 
   const gymDone = data.gym[today] === true;
 
@@ -72,7 +74,7 @@ export default function Dashboard() {
         {/* Protein & Prayer Progress Row */}
         <div className="grid grid-cols-2 gap-3">
           {/* Protein Card */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden">
+          <Link href="/diet" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
             <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-full blur-2xl -mr-4 -mt-4" />
             <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider mb-2">Protein</p>
             <div className="flex items-baseline gap-1 mb-2">
@@ -85,7 +87,7 @@ export default function Dashboard() {
                 style={{ width: `${Math.min((totalProtein / proteinGoal) * 100, 100)}%` }}
               />
             </div>
-          </div>
+          </Link>
 
           {/* Prayer Card */}
           <Link href="/namaz" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
@@ -127,10 +129,15 @@ export default function Dashboard() {
 
           {/* Diet Card */}
           <Link href="/diet" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
-            <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider block mb-2">Protein</span>
-            <p className="text-xl font-black text-white tracking-tight">
-              {Math.round(totalProtein)}<span className="text-sm font-normal text-zinc-600">/ {proteinGoal}g</span>
-            </p>
+            <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider block mb-2">Diet</span>
+            <div className="space-y-1">
+              <p className="text-base font-extrabold text-white tracking-tight">
+                🥩 {Math.round(totalProtein)}g <span className="text-[10px] text-zinc-500 font-normal">/ {proteinGoal}g</span>
+              </p>
+              <p className="text-base font-extrabold text-white tracking-tight">
+                🔥 {Math.round(totalCalories)} <span className="text-[10px] text-zinc-500 font-normal">/ {calorieGoal} kcal</span>
+              </p>
+            </div>
           </Link>
 
           {/* Tasks Card */}
