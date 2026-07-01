@@ -29,11 +29,11 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
   score += proteinScore;
 
   // 4. Tasks ratio (15pts)
-  const todayTasks = data.tasks.filter(t => t.date === dateStr);
+  const activeTodos = data.todos ? data.todos.filter(t => !t.archived) : [];
   let tasksScore = 0;
-  if (todayTasks.length > 0) {
-    const doneTasks = todayTasks.filter(t => t.done).length;
-    tasksScore = (doneTasks / todayTasks.length) * 15;
+  if (activeTodos.length > 0) {
+    const doneTasks = activeTodos.filter(t => t.done).length;
+    tasksScore = (doneTasks / activeTodos.length) * 15;
     score += tasksScore;
   } else {
     tasksScore = 0;

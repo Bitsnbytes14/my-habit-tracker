@@ -18,8 +18,8 @@ export default function Dashboard() {
   const prayers = data.prayers[today] || {};
   const prayersDone = Object.values(prayers).filter(v => v === 'done').length;
 
-  const tasksToday = data.tasks.filter(t => t.date === today);
-  const tasksDone = tasksToday.filter(t => t.done).length;
+  const activeTodos = data.todos ? data.todos.filter(t => !t.archived) : [];
+  const tasksDone = activeTodos.filter(t => t.done).length;
 
   const mealsToday = data.meals.filter(m => m.date === today);
   const proteinGoal = data.settings?.proteinGoal || 150;
@@ -134,15 +134,15 @@ export default function Dashboard() {
           </Link>
 
           {/* Tasks Card */}
-          <Link href="/calendar" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
+          <Link href="/todos" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
             <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider block mb-2">Tasks</span>
             <p className="text-xl font-black text-white tracking-tight">
-              {tasksDone}<span className="text-sm font-normal text-zinc-600">/ {tasksToday.length}</span>
+              {tasksDone}<span className="text-sm font-normal text-zinc-600">/ {activeTodos.length}</span>
             </p>
             <div className="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800/50 mt-2">
               <div
                 className="h-full rounded-full transition-all duration-500 bg-indigo-500"
-                style={{ width: `${tasksToday.length ? (tasksDone / tasksToday.length) * 100 : 0}%` }}
+                style={{ width: `${activeTodos.length ? (tasksDone / activeTodos.length) * 100 : 0}%` }}
               />
             </div>
           </Link>

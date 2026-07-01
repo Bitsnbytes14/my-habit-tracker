@@ -26,7 +26,6 @@ export const getLifeOSData = (): LifeOSData => {
     // Quick migration / fallback checking for new types
     let meals = parsed.meals || [];
     if (!Array.isArray(meals)) {
-      // If it's the old object struct, reset to [] or map it
       meals = [];
     }
 
@@ -34,16 +33,44 @@ export const getLifeOSData = (): LifeOSData => {
     if (parsed.workouts && !parsed.gym) {
       gym = {}; // Wipe old workouts
     }
+
+    // Migrate tasks to todos if any exist
+    let todos = parsed.todos || [];
+    let tasks = parsed.tasks || [];
+    let migratedAny = false;
+    if (Array.isArray(tasks) && tasks.length > 0) {
+      const migrated = tasks.map((t: any) => ({
+        id: t.id || Date.now().toString() + Math.random().toString(),
+        text: t.title || '',
+        done: !!t.done,
+        archived: false,
+      }));
+      const existingIds = new Set(todos.map((todo: any) => todo.id));
+      const newMigrated = migrated.filter((mt: any) => !existingIds.has(mt.id));
+      if (newMigrated.length > 0) {
+        todos = [...todos, ...newMigrated];
+      }
+      tasks = []; // clear the tasks array so it is not processed again
+      migratedAny = true;
+    }
     
     // Merge with defaults to ensure all keys exist
-    return {
+    const merged = {
       ...getDefaultData(),
       ...parsed,
       gym,
       meals,
+      todos,
+      tasks,
       coding: parsed.coding || {},
       settings: { ...defaultSettings, ...(parsed.settings || {}) },
     };
+
+    if (migratedAny) {
+      saveLifeOSData(merged);
+    }
+
+    return merged;
   } catch (err) {
     console.error('Failed to parse LifeOS localStorage data', err);
     return getDefaultData();

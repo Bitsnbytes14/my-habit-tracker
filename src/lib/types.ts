@@ -23,6 +23,7 @@ export interface Todo {
   id: string;
   text: string;
   done: boolean;
+  archived?: boolean;
 }
 
 export type PrayerState = 'pending' | 'done' | 'missed';

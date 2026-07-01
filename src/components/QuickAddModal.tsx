@@ -8,7 +8,6 @@ import { getTodayString } from '@/lib/storage';
 export const QuickAddModal = () => {
   const { updateData, quickAddType, openQuickAdd, closeQuickAdd, showFeedback } = useLifeOS();
   const [title, setTitle] = useState('');
-  const [time, setTime] = useState('');
   const [weight, setWeight] = useState('');
 
   const isOpen = quickAddType !== null;
@@ -19,7 +18,6 @@ export const QuickAddModal = () => {
   useEffect(() => {
     if (isOpen) {
       setTitle('');
-      setTime('');
       setWeight('');
     }
   }, [isOpen]);
@@ -29,11 +27,6 @@ export const QuickAddModal = () => {
   const handleSave = () => {
     if (!title.trim() && currentType !== 'weight') {
       alert("Title is required!");
-      return;
-    }
-
-    if (currentType === 'task' && !time) {
-      alert("Time is required for tasks!");
       return;
     }
 
@@ -49,15 +42,13 @@ export const QuickAddModal = () => {
       const draft = { ...prev };
 
       if (currentType === 'task') {
-        draft.tasks = [
-          ...draft.tasks,
+        draft.todos = [
+          ...(draft.todos || []),
           {
             id,
-            title,
-            date: today,
-            time: time,
+            text: title,
             done: false,
-            type: 'task',
+            archived: false,
           },
         ];
       } else if (currentType === 'meal') {
@@ -138,21 +129,9 @@ export const QuickAddModal = () => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white placeholder-zinc-500 mb-4 focus:outline-none focus:border-blue-500 transition-colors"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white placeholder-zinc-500 mb-6 focus:outline-none focus:border-blue-500 transition-colors"
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             />
-
-            {currentType === 'task' && (
-              <div className="mb-6">
-                <label className="block text-xs font-semibold text-zinc-500 uppercase mb-2 ml-1">Time (Required)</label>
-                <input
-                  type="time"
-                  value={time}
-                  onChange={e => setTime(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white focus:outline-none focus:border-blue-500 dark:[color-scheme:dark]"
-                />
-              </div>
-            )}
           </>
         )}
 

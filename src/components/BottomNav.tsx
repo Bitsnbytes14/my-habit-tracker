@@ -12,8 +12,8 @@ export const BottomNav = () => {
 
   const navItems = [
     { name: 'Home', href: '/', icon: '⌂' },
-    { name: 'Calendar', href: '/calendar', icon: '📅' },
-    { name: 'Focus', href: '/focus', icon: '🎯' },
+    { name: 'To-Do', href: '/todos', icon: '📋' },
+    { name: 'Timetable', href: '/timetable', icon: '🎓' },
     { name: 'Diet', href: '/diet', icon: '🥩' },
     { name: 'Namaz', href: '/namaz', icon: '🕋' },
     { name: 'Stats', href: '/progress', icon: '📈' },
