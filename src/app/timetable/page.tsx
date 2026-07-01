@@ -21,16 +21,16 @@ const scheduleData: DaySchedule[] = [
       { time: '9:40–10:35', subject: 'Cybersecurity', room: 'Room 404' },
       { time: '10:40–11:35', subject: 'Compiler Construction', room: 'Room 404' },
       { time: '11:35–12:30', subject: 'Lunch' },
-      { time: '2:25–3:20', subject: 'Last Class' },
+      { time: '2:25–3:20', subject: 'HCI', room: 'Room 404' },
     ],
   },
   {
     dayName: 'Tuesday',
     items: [
-      { time: '10:40–11:35', subject: 'HCI' },
+      { time: '10:40–11:35', subject: 'HCI', room: 'Room 402' },
       { time: '11:35–12:30', subject: 'Lunch' },
       { time: '2:25–3:20', subject: 'DS Theory', room: 'Room 403' },
-      { time: '3:25–4:20', subject: 'DevOps Theory' },
+      { time: '3:25–4:20', subject: 'DevOps Theory', room: 'Room 403' },
     ],
   },
   {
@@ -40,7 +40,7 @@ const scheduleData: DaySchedule[] = [
       { time: '9:40–10:35', subject: 'DS Theory', room: 'Room 403' },
       { time: '10:40–12:30', subject: 'ELH' },
       { time: '11:35–12:30', subject: 'Lunch' },
-      { time: '12:30–2:20', subject: 'DevOps Lab' },
+      { time: '12:30–2:20', subject: 'DevOps Lab', room: 'CL09' },
     ],
   },
   {
@@ -54,9 +54,9 @@ const scheduleData: DaySchedule[] = [
   {
     dayName: 'Friday',
     items: [
-      { time: '8:45–9:40', subject: 'Compiler Construction' },
-      { time: '9:40–10:35', subject: 'Cybersecurity' },
-      { time: '10:40–11:35', subject: 'DS Theory' },
+      { time: '8:45–9:40', subject: 'Compiler Construction', room: 'Room 404' },
+      { time: '9:40–10:35', subject: 'Cybersecurity', room: 'Room 404' },
+      { time: '10:40–11:35', subject: 'DS Theory', room: 'Room 403' },
       { time: '11:35–12:30', subject: 'Lunch' },
       { time: '12:30–2:20', subject: 'Compiler Construction Lab', room: 'CL07' },
       { time: '2:25–4:20', subject: 'DevOps Lab', room: 'CL06' },
@@ -65,7 +65,7 @@ const scheduleData: DaySchedule[] = [
   {
     dayName: 'Saturday',
     items: [
-      { time: '10:40–12:30', subject: 'Flexi' },
+      { time: '10:40–12:30', subject: 'Flexi', room: 'CL09 & CL10' },
     ],
   },
 ];
