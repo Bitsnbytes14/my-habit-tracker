@@ -105,8 +105,8 @@ const attendanceConfig: SubjectConfig[] = [
   {
     name: 'DevOps Lab',
     classes: [
-      { id: 'devops_lab_tue', day: 'Tuesday', time: '9:00–9:55', type: 'Lab', room: 'ADS-C07' },
-      { id: 'devops_lab_wed', day: 'Wednesday', time: '12:40–1:35', type: 'Lab', room: 'ADS-C09' },
+      { id: 'devops_lab_tue', day: 'Tuesday', time: '9:00–10:50', type: 'Lab', room: 'ADS-C07' },
+      { id: 'devops_lab_wed', day: 'Wednesday', time: '12:40–2:30', type: 'Lab', room: 'ADS-C09' },
     ],
   },
   {
@@ -120,7 +120,7 @@ const attendanceConfig: SubjectConfig[] = [
   {
     name: 'Data Science Lab',
     classes: [
-      { id: 'ds_lab_tue', day: 'Tuesday', time: '12:40–1:35', type: 'Lab', room: 'DPD-C04' },
+      { id: 'ds_lab_tue', day: 'Tuesday', time: '12:40–2:30', type: 'Lab', room: 'DPD-C04' },
     ],
   },
   {
