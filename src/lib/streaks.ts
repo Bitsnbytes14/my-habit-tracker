@@ -52,3 +52,7 @@ export const getJournalStreak = (data: LifeOSData) => {
     return !!(j && j.trim().length > 0);
   });
 };
+
+export const getCollegeStreak = (data: LifeOSData) => {
+  return calculateStreak((dateStr) => data.college?.[dateStr] === true);
+};

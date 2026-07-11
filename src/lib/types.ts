@@ -56,6 +56,7 @@ export interface LifeOSData {
   coding: Record<string, boolean>; // Key: YYYY-MM-DD
   settings: Settings;
   attendance?: Record<string, boolean>; // Key: classId
+  college?: Record<string, boolean>; // Key: YYYY-MM-DD
 }
 
 export const defaultSettings: Settings = {

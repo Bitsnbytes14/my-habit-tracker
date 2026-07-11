@@ -55,5 +55,11 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
     score += codingScore;
   }
 
+  // 7. College (10pts)
+  const collegeDone = data.college?.[dateStr] === true;
+  if (collegeDone) {
+    score += 10;
+  }
+
   return Math.round(score);
 };
