@@ -15,6 +15,7 @@ export const getDefaultData = (): LifeOSData => ({
   attendance: {},
   college: {},
   steps: {},
+  weeklyReports: [],
 });
 
 export const getLifeOSData = (): LifeOSData => {
@@ -70,6 +71,7 @@ export const getLifeOSData = (): LifeOSData => {
       attendance: parsed.attendance || {},
       college: parsed.college || {},
       steps: parsed.steps || {},
+      weeklyReports: parsed.weeklyReports || [],
     };
 
     if (migratedAny) {

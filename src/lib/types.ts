@@ -58,6 +58,36 @@ export interface LifeOSData {
   attendance?: Record<string, boolean>; // Key: classId
   college?: Record<string, boolean>; // Key: YYYY-MM-DD
   steps?: Record<string, boolean>; // Key: YYYY-MM-DD
+  weeklyReports?: WeeklyReport[];
+}
+
+export interface WeeklyReport {
+  weekNumber: number;
+  startDate: string; // YYYY-MM-DD (Monday)
+  endDate: string; // YYYY-MM-DD (Sunday)
+  avgScore: number;
+  gymPct: number;
+  collegePct: number;
+  stepsPct: number;
+  prayerPct: number;
+  proteinPct: number;
+  todoPct: number;
+  classAttendancePct: number;
+  grade: string;
+  gymAttended: number;
+  gymTotal: number;
+  collegeAttended: number;
+  collegeTotal: number;
+  stepsAttended: number;
+  stepsTotal: number;
+  prayersAttended: number;
+  prayersTotal: number;
+  proteinAttended: number;
+  proteinTotal: number;
+  todosAttended: number;
+  todosTotal: number;
+  classesAttended: number;
+  classesTotal: number;
 }
 
 export const defaultSettings: Settings = {
