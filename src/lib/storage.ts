@@ -12,6 +12,7 @@ export const getDefaultData = (): LifeOSData => ({
   weightLogs: [],
   coding: {},
   settings: defaultSettings,
+  attendance: {},
 });
 
 export const getLifeOSData = (): LifeOSData => {
@@ -64,6 +65,7 @@ export const getLifeOSData = (): LifeOSData => {
       tasks,
       coding: parsed.coding || {},
       settings: { ...defaultSettings, ...(parsed.settings || {}) },
+      attendance: parsed.attendance || {},
     };
 
     if (migratedAny) {

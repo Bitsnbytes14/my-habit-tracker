@@ -55,6 +55,7 @@ export interface LifeOSData {
   weightLogs: WeightLog[];
   coding: Record<string, boolean>; // Key: YYYY-MM-DD
   settings: Settings;
+  attendance?: Record<string, boolean>; // Key: classId
 }
 
 export const defaultSettings: Settings = {
