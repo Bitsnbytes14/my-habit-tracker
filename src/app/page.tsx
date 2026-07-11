@@ -29,6 +29,7 @@ export default function Dashboard() {
 
   const gymDone = data.gym[today] === true;
   const collegeDone = data.college?.[today] === true;
+  const stepsDone = data.steps?.[today] === true;
 
   const latestWeight = data.weightLogs.length > 0 ? data.weightLogs[data.weightLogs.length - 1].weight : null;
 
@@ -50,6 +51,14 @@ export default function Dashboard() {
       college: { ...prev.college, [today]: !prev.college?.[today] }
     }));
     showFeedback(wasDone ? 'College marked as missed' : 'College marked as attended ✓', 'success');
+  };
+
+  const toggleSteps = () => {
+    const wasDone = data.steps?.[today] === true;
+    updateData(prev => ({
+      steps: { ...prev.steps, [today]: !prev.steps?.[today] }
+    }));
+    showFeedback(wasDone ? 'Steps marked incomplete' : '10K Steps completed ✓', 'success');
   };
 
   return (
@@ -152,23 +161,32 @@ export default function Dashboard() {
             </p>
           </div>
 
+          {/* 10K Steps Card */}
+          <div
+            onClick={toggleSteps}
+            className={`relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] ${stepsDone ? 'bg-green-900/30 border-2 border-green-500' : 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/70'}`}
+          >
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">10K Steps</span>
+              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${stepsDone ? 'bg-green-500 border-green-500' : 'border-zinc-600'}`}>
+                {stepsDone && <span className="text-zinc-900 text-xs font-black">✓</span>}
+              </div>
+            </div>
+            <p className={`text-xl font-black tracking-tight ${stepsDone ? 'text-green-400' : 'text-white'}`}>
+              {stepsDone ? 'Completed' : 'Pending'}
+            </p>
+          </div>
+
           {/* Diet Card */}
-          <Link href="/diet" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors col-span-2">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-full blur-2xl -mr-4 -mt-4" />
+          <Link href="/diet" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
             <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider block mb-2">Diet</span>
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-[10px] text-zinc-500 uppercase font-semibold">Protein</p>
-                <p className="text-base font-extrabold text-white tracking-tight">
-                  🥩 {Math.round(totalProtein)}g <span className="text-[10px] text-zinc-500 font-normal">/ {proteinGoal}g</span>
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] text-zinc-500 uppercase font-semibold">Calories</p>
-                <p className="text-base font-extrabold text-white tracking-tight">
-                  🔥 {Math.round(totalCalories)} <span className="text-[10px] text-zinc-500 font-normal">/ {calorieGoal} kcal</span>
-                </p>
-              </div>
+            <div className="space-y-1">
+              <p className="text-base font-extrabold text-white tracking-tight">
+                🥩 {Math.round(totalProtein)}g <span className="text-[10px] text-zinc-500 font-normal">/ {proteinGoal}g</span>
+              </p>
+              <p className="text-base font-extrabold text-white tracking-tight">
+                🔥 {Math.round(totalCalories)} <span className="text-[10px] text-zinc-500 font-normal">/ {calorieGoal} kcal</span>
+              </p>
             </div>
           </Link>
 

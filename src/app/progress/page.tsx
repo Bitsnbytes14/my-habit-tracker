@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useLifeOS } from '@/components/LifeOSProvider';
 import { getTodayString, getOffsetDateString } from '@/lib/storage';
 import { calculateDailyScore } from '@/lib/scoring';
-import { getGymStreak, getPrayerStreak, getJournalStreak, getCollegeStreak, getProteinStreak } from '@/lib/streaks';
+import { getGymStreak, getPrayerStreak, getJournalStreak, getCollegeStreak, getProteinStreak, getStepsStreak } from '@/lib/streaks';
 import { attendanceConfig } from '@/lib/attendance';
 
 export default function ProgressPage() {
@@ -63,6 +63,7 @@ export default function ProgressPage() {
     ...Object.keys(data.journal),
     ...Object.keys(data.coding || {}),
     ...Object.keys(data.college || {}),
+    ...Object.keys(data.steps || {}),
     ...data.meals.map(m => m.date),
     ...data.weightLogs.map(w => w.date)
   ]);
@@ -82,6 +83,10 @@ export default function ProgressPage() {
   // College Completion
   const collegeDaysThisWeek = last7Days.filter(d => data.college?.[d] === true).length;
   const collegePct = (collegeDaysThisWeek / 7) * 100;
+
+  // 10K Steps Completion
+  const stepsDaysThisWeek = last7Days.filter(d => data.steps?.[d] === true).length;
+  const stepsPct = (stepsDaysThisWeek / 7) * 100;
 
   // Namaz
   let prayersDoneThisWeek = 0;
@@ -121,12 +126,6 @@ export default function ProgressPage() {
   const overallAttendancePct = totalClasses > 0 ? (totalAttended / totalClasses) * 100 : 0;
 
   // Secondary Weekly Stats
-  const journalDaysThisWeek = last7Days.filter(d => {
-    const j = data.journal[d];
-    return !!(j && j.trim().length > 0);
-  }).length;
-  const journalPct = (journalDaysThisWeek / 7) * 100;
-
   const activeTodos = data.todos ? data.todos.filter(t => !t.archived) : [];
   const doneActiveTodos = activeTodos.filter(t => t.done).length;
   const todoPct = activeTodos.length > 0 ? (doneActiveTodos / activeTodos.length) * 100 : 0;
@@ -157,9 +156,9 @@ export default function ProgressPage() {
   const prayerStreak = getPrayerStreak(data);
   const gymStreak = getGymStreak(data);
   const collegeStreak = getCollegeStreak(data);
-  const journalStreak = getJournalStreak(data);
+  const stepsStreak = getStepsStreak(data);
   const proteinStreak = getProteinStreak(data);
-  const bestStreak = Math.max(gymStreak, collegeStreak, prayerStreak, proteinStreak, journalStreak);
+  const bestStreak = Math.max(gymStreak, collegeStreak, prayerStreak, proteinStreak, stepsStreak);
 
   // Highest score calculation
   let highestScore = 0;
@@ -173,10 +172,10 @@ export default function ProgressPage() {
   const activeDaysLast30 = last30Days.filter(d => trackedDates.has(d)).length;
   const gymDaysLast30 = last30Days.filter(d => data.gym[d] === true).length;
   const collegeDaysLast30 = last30Days.filter(d => data.college?.[d] === true).length;
+  const stepsDaysLast30 = last30Days.filter(d => data.steps?.[d] === true).length;
   
   let proteinGoalMetLast30 = 0;
   let last30ScoresSum = 0;
-  let journalEntriesLast30 = 0;
 
   last30Days.forEach(d => {
     const dayMeals = data.meals.filter(m => m.date === d);
@@ -185,17 +184,13 @@ export default function ProgressPage() {
       proteinGoalMetLast30++;
     }
     last30ScoresSum += calculateDailyScore(data, d);
-    
-    const j = data.journal[d];
-    if (j && j.trim().length > 0) {
-      journalEntriesLast30++;
-    }
   });
   const avgScoreLast30 = Math.round(last30ScoresSum / 30);
 
   // Global Totals (Progress Cards)
   const totalGymDays = Object.values(data.gym).filter(Boolean).length;
   const totalCollegeDays = Object.values(data.college || {}).filter(Boolean).length;
+  const totalStepsDays = Object.values(data.steps || {}).filter(Boolean).length;
   
   let totalPrayersDone = 0;
   Object.values(data.prayers).forEach(p => {
@@ -207,7 +202,6 @@ export default function ProgressPage() {
     proteinByDate[m.date] = (proteinByDate[m.date] || 0) + (m.protein || 0);
   });
   const totalProteinDaysAchieved = Object.values(proteinByDate).filter(p => p >= proteinGoal).length;
-  const totalJournalEntries = Object.values(data.journal).filter(j => j && j.trim().length > 0).length;
   const totalTodosCompleted = data.todos.filter(t => t.done).length;
 
   // Weekly Insights
@@ -221,8 +215,8 @@ export default function ProgressPage() {
     // College
     insights.push(`You attended college ${collegeDaysThisWeek}/7 days this week.`);
     
-    // Protein
-    insights.push(`Protein goal achieved on ${proteinGoalMetDays} of the last 7 days.`);
+    // Steps
+    insights.push(`You completed your 10K step goal on ${stepsDaysThisWeek} of the last 7 days.`);
 
     // Daily Score comparison
     const prev7Days = Array.from({ length: 7 }, (_, i) => getOffsetDateString(-i - 7)).reverse();
@@ -251,9 +245,9 @@ export default function ProgressPage() {
       insights.push(`Prayer consistency improved by ${prayerDiff.toFixed(1)}% compared to last week.`);
     }
 
-    // Journal streak
-    if (journalStreak > 0) {
-      insights.push(`You are on a solid ${journalStreak}-day journal writing streak.`);
+    // Steps streak
+    if (stepsStreak > 0) {
+      insights.push(`Current Steps Streak: ${stepsStreak} days.`);
     }
   }
 
@@ -265,7 +259,7 @@ export default function ProgressPage() {
         <h1 className="text-2xl font-bold text-white tracking-tight">Progress Hub</h1>
       </header>
 
-      {/* Weekly Summary (Score, Gym, College, Namaz, Protein, Attendance first) */}
+      {/* Weekly Summary (Score, Gym, College, Steps, Namaz, Protein, Attendance first) */}
       <section className="mb-6 bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-sm">
         <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Weekly Summary</h3>
         
@@ -303,6 +297,17 @@ export default function ProgressPage() {
             </div>
             <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-850">
               <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${collegePct}%` }} />
+            </div>
+          </div>
+
+          {/* 10K Steps */}
+          <div>
+            <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+              <span className="text-zinc-300">👣 10K Steps Tracker</span>
+              <span className="text-zinc-400">{stepsDaysThisWeek}/7 • <span className="text-blue-400">{stepsPct.toFixed(1)}%</span></span>
+            </div>
+            <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-850">
+              <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{ width: `${stepsPct}%` }} />
             </div>
           </div>
 
@@ -350,11 +355,7 @@ export default function ProgressPage() {
             <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Avg Protein</p>
             <p className="text-lg font-black text-white mt-0.5">{avgProtein} g/d</p>
           </div>
-          <div>
-            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Journal Completion</p>
-            <p className="text-xs font-bold text-white mt-0.5">{journalDaysThisWeek}/7 • <span className="text-blue-400">{journalPct.toFixed(1)}%</span></p>
-          </div>
-          <div>
+          <div className="col-span-2">
             <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Todo Completion</p>
             <p className="text-xs font-bold text-white mt-0.5">{doneActiveTodos}/{activeTodos.length || 0} • <span className="text-blue-400">{todoPct.toFixed(1)}%</span></p>
           </div>
@@ -376,7 +377,7 @@ export default function ProgressPage() {
             </ul>
           ) : (
             <p className="text-sm text-zinc-500 italic text-center py-2">
-              Keep using Life OS to unlock weekly insights
+              Keep tracking your daily habits to unlock weekly insights.
             </p>
           )}
         </div>
@@ -429,18 +430,22 @@ export default function ProgressPage() {
             </div>
             
             {/* Streaks row */}
-            <div className="col-span-2 grid grid-cols-3 gap-2 py-2 border-y border-zinc-800/50 my-1">
+            <div className="col-span-2 grid grid-cols-4 gap-2 py-2 border-y border-zinc-800/50 my-1">
               <div className="text-center">
-                <span className="text-[10px] text-zinc-500 uppercase font-bold">Gym Streak</span>
-                <p className="text-base font-black text-white mt-0.5">🏋️ {gymStreak}d</p>
+                <span className="text-[9px] text-zinc-500 uppercase font-bold block truncate">Gym Streak</span>
+                <p className="text-sm font-black text-white mt-0.5">🏋️ {gymStreak}d</p>
               </div>
               <div className="text-center">
-                <span className="text-[10px] text-zinc-500 uppercase font-bold">College Streak</span>
-                <p className="text-base font-black text-white mt-0.5">🎓 {collegeStreak}d</p>
+                <span className="text-[9px] text-zinc-500 uppercase font-bold block truncate">College Streak</span>
+                <p className="text-sm font-black text-white mt-0.5">🎓 {collegeStreak}d</p>
               </div>
               <div className="text-center">
-                <span className="text-[10px] text-zinc-500 uppercase font-bold">Prayer Streak</span>
-                <p className="text-base font-black text-white mt-0.5">🕋 {prayerStreak}d</p>
+                <span className="text-[9px] text-zinc-500 uppercase font-bold block truncate">Steps Streak</span>
+                <p className="text-sm font-black text-white mt-0.5">👣 {stepsStreak}d</p>
+              </div>
+              <div className="text-center">
+                <span className="text-[9px] text-zinc-500 uppercase font-bold block truncate">Prayer Streak</span>
+                <p className="text-sm font-black text-white mt-0.5">🕋 {prayerStreak}d</p>
               </div>
             </div>
 
@@ -449,8 +454,8 @@ export default function ProgressPage() {
               <p className="text-lg font-black text-blue-400 mt-0.5">{highestScore}</p>
             </div>
             <div className="bg-zinc-950/45 p-3 rounded-xl border border-zinc-850">
-              <p className="text-[10px] text-zinc-500 uppercase font-bold">Current Daily Score</p>
-              <p className="text-lg font-black text-white mt-0.5">{calculateDailyScore(data, today)}</p>
+              <p className="text-[10px] text-zinc-500 uppercase font-bold">Days Using Life OS</p>
+              <p className="text-lg font-black text-white mt-0.5">{daysTracked} days</p>
             </div>
           </div>
         </div>
@@ -477,16 +482,16 @@ export default function ProgressPage() {
             <p className="text-xl font-black text-white mt-1">{totalCollegeDays} days</p>
           </div>
           <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
+            <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">👣 Steps Goal Achieved</span>
+            <p className="text-xl font-black text-white mt-1">{totalStepsDays} days</p>
+          </div>
+          <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
             <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">🕌 Prayers Done</span>
             <p className="text-xl font-black text-white mt-1">{totalPrayersDone}</p>
           </div>
           <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
             <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">🍗 Protein Met</span>
             <p className="text-xl font-black text-white mt-1">{totalProteinDaysAchieved} days</p>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
-            <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">📝 Journal Entries</span>
-            <p className="text-xl font-black text-white mt-1">{totalJournalEntries}</p>
           </div>
           <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
             <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">✅ Todos Completed</span>
@@ -517,12 +522,12 @@ export default function ProgressPage() {
               <p className="text-sm font-bold text-white mt-0.5">{collegeDaysLast30}/30 • <span className="text-blue-400">{((collegeDaysLast30 / 30) * 100).toFixed(1)}%</span></p>
             </div>
             <div>
-              <p className="text-[10px] text-zinc-500 uppercase font-bold">Protein Goals Met</p>
-              <p className="text-sm font-bold text-white mt-0.5">{proteinGoalMetLast30}/30 • <span className="text-blue-400">{((proteinGoalMetLast30 / 30) * 100).toFixed(1)}%</span></p>
+              <p className="text-[10px] text-zinc-500 uppercase font-bold">Steps Goal Achieved</p>
+              <p className="text-sm font-bold text-white mt-0.5">{stepsDaysLast30}/30 • <span className="text-blue-400">{((stepsDaysLast30 / 30) * 100).toFixed(1)}%</span></p>
             </div>
             <div>
-              <p className="text-[10px] text-zinc-500 uppercase font-bold">Journal Entries</p>
-              <p className="text-sm font-bold text-white mt-0.5">{journalEntriesLast30}/30 • <span className="text-blue-400">{((journalEntriesLast30 / 30) * 100).toFixed(1)}%</span></p>
+              <p className="text-[10px] text-zinc-500 uppercase font-bold">Protein Goals Met</p>
+              <p className="text-sm font-bold text-white mt-0.5">{proteinGoalMetLast30}/30 • <span className="text-blue-400">{((proteinGoalMetLast30 / 30) * 100).toFixed(1)}%</span></p>
             </div>
           </div>
         </div>

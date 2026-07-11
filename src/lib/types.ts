@@ -57,6 +57,7 @@ export interface LifeOSData {
   settings: Settings;
   attendance?: Record<string, boolean>; // Key: classId
   college?: Record<string, boolean>; // Key: YYYY-MM-DD
+  steps?: Record<string, boolean>; // Key: YYYY-MM-DD
 }
 
 export const defaultSettings: Settings = {

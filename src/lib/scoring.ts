@@ -39,12 +39,10 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
     tasksScore = 0;
   }
 
-  // 5. Journal (10pts)
-  const journalEntry = data.journal[dateStr];
-  let journalScore = 0;
-  if (journalEntry && journalEntry.trim().length > 0) {
-    journalScore = 10;
-    score += journalScore;
+  // 5. 10K Steps (10pts)
+  const stepsDone = data.steps?.[dateStr] === true;
+  if (stepsDone) {
+    score += 10;
   }
 
   // 6. Coding/Work (15pts)

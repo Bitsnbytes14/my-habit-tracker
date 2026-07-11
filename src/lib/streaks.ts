@@ -56,3 +56,7 @@ export const getJournalStreak = (data: LifeOSData) => {
 export const getCollegeStreak = (data: LifeOSData) => {
   return calculateStreak((dateStr) => data.college?.[dateStr] === true);
 };
+
+export const getStepsStreak = (data: LifeOSData) => {
+  return calculateStreak((dateStr) => data.steps?.[dateStr] === true);
+};
