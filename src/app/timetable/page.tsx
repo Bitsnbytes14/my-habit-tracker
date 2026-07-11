@@ -18,47 +18,56 @@ const scheduleData: DaySchedule[] = [
   {
     dayName: 'Monday',
     items: [
-      { time: '9:55–10:50', subject: 'Cybersecurity', room: 'Room 404' },
-      { time: '10:50–11:45', subject: 'Compiler Construction', room: 'Room 402' },
+      { time: '10:50–11:45', subject: 'Compiler Construction', room: 'USJ-404' },
       { time: '11:45–12:40', subject: 'Lunch' },
-      { time: '12:40–2:30', subject: 'Compiler Construction Lab', room: 'CO6' },
-      { time: '2:30–3:25', subject: 'Data Science Theory', room: 'Room 403' },
+      { time: '2:30–3:25', subject: 'Data Science Theory', room: 'DSD-404' },
+      { time: '3:25–4:20', subject: 'Cybersecurity', room: 'PAB-402' },
     ],
   },
   {
     dayName: 'Tuesday',
     items: [
-      { time: '9:00–10:50', subject: 'DevOps Lab', room: 'CO7' },
-      { time: '10:50–11:45', subject: 'HCI Theory', room: 'Room 403' },
+      { time: '9:00–9:55', subject: 'DevOps Lab (L2)', room: 'ADS-C07' },
+      { time: '9:55–10:50', subject: 'DevOps Lab (L2)', room: 'ADS-C07' },
+      { time: '10:50–11:45', subject: 'HCI Theory', room: 'SUG-402' },
       { time: '11:45–12:40', subject: 'Lunch' },
-      { time: '12:40–2:30', subject: 'Data Science Lab', room: 'CO4' },
-      { time: '2:30–3:25', subject: 'Data Science Theory', room: 'Room 403' },
+      { time: '12:40–1:35', subject: 'Data Science Lab (L3)', room: 'DPD-C04' },
+      { time: '1:35–2:30', subject: 'Data Science Lab (L3)', room: 'DPD-C04' },
+      { time: '2:30–3:25', subject: 'Data Science Theory', room: 'DSD-404' },
+      { time: '3:25–4:20', subject: 'DevOps Theory', room: 'ARD-402' },
     ],
   },
   {
     dayName: 'Wednesday',
     items: [
-      { time: '9:00–9:55', subject: 'HCI Theory', room: 'Room 403' },
-      { time: '9:55–10:50', subject: 'Data Science Theory', room: 'Room 403' },
-      { time: '10:50–11:45', subject: 'Free Period' },
+      { time: '9:00–9:55', subject: 'HCI Theory', room: 'SUG-404' },
+      { time: '9:55–10:50', subject: 'Data Science Theory', room: 'DSD-404' },
+      { time: '10:50–11:45', subject: 'Compiler Construction', room: 'USJ-403' },
       { time: '11:45–12:40', subject: 'Lunch' },
-      { time: '12:40–2:30', subject: 'DevOps Lab', room: 'CL09' },
-      { time: '3:25–4:20', subject: 'Cybersecurity', room: 'Room 401' },
+      { time: '12:40–1:35', subject: 'DevOps Lab (L2)', room: 'ADS-C09' },
+      { time: '1:35–2:30', subject: 'DevOps Lab (L2)', room: 'ADS-C09' },
     ],
   },
   {
     dayName: 'Thursday',
     items: [
-      { time: '12:40–1:35', subject: 'Compiler Construction', room: 'Room 403' },
-      { time: '1:35–2:30', subject: 'Flexi', room: 'CL09 / CL10' },
-      { time: '2:30–3:25', subject: 'Compiler Construction', room: 'Room 402' },
+      { time: '9:00–9:55', subject: 'HCI Theory', room: 'SUG-401' },
+      { time: '9:55–10:50', subject: 'Compiler Construction', room: 'USJ-404' },
+      { time: '10:50–11:45', subject: 'DevOps Theory', room: 'ARD-402' },
+      { time: '11:45–12:40', subject: 'Lunch' },
+      { time: '12:40–1:35', subject: 'Flexi', room: 'SKM-C09 / NIZ-C10' },
+      { time: '1:35–2:30', subject: 'Compiler Construction Lab', room: 'VTI-C07' },
+      { time: '2:30–3:25', subject: 'Compiler Construction Lab', room: 'VTI-C07' },
+      { time: '3:25–4:20', subject: 'Faculty Meeting / No Class' },
     ],
   },
   {
     dayName: 'Friday',
     items: [
-      { time: '10:50–11:45', subject: 'HCI Theory' },
-      { time: '12:40–2:30', subject: 'Flexi', room: 'CO3 / CO4' },
+      { time: '9:55–10:50', subject: 'Cybersecurity', room: 'PAB-403' },
+      { time: '11:45–12:40', subject: 'Lunch' },
+      { time: '2:30–3:25', subject: 'Flexi', room: 'SKM-C09 / NIZ-C10' },
+      { time: '3:25–4:20', subject: 'Flexi', room: 'SKM-C09 / NIZ-C10' },
     ],
   },
 ];
@@ -68,6 +77,7 @@ interface AttendanceClass {
   day: string;
   time: string;
   type: string;
+  room?: string;
 }
 
 interface SubjectConfig {
@@ -79,53 +89,61 @@ const attendanceConfig: SubjectConfig[] = [
   {
     name: 'Compiler Construction',
     classes: [
-      { id: 'cc_mon_theory', day: 'Monday', time: '10:50–11:45', type: 'Theory' },
-      { id: 'cc_mon_lab', day: 'Monday', time: '12:40–2:30', type: 'Lab' },
-      { id: 'cc_thu_theory_1', day: 'Thursday', time: '12:40–1:35', type: 'Theory' },
-      { id: 'cc_thu_theory_2', day: 'Thursday', time: '2:30–3:25', type: 'Theory' },
+      { id: 'cc_mon_theory', day: 'Monday', time: '10:50–11:45', type: 'Theory', room: 'USJ-404' },
+      { id: 'cc_wed_theory', day: 'Wednesday', time: '10:50–11:45', type: 'Theory', room: 'USJ-403' },
+      { id: 'cc_thu_theory', day: 'Thursday', time: '9:55–10:50', type: 'Theory', room: 'USJ-404' },
+      { id: 'cc_thu_lab', day: 'Thursday', time: '1:35–2:30', type: 'Lab', room: 'VTI-C07' },
     ],
   },
   {
-    name: 'Cybersecurity',
+    name: 'DevOps Theory',
     classes: [
-      { id: 'cyber_mon_theory', day: 'Monday', time: '9:55–10:50', type: 'Theory' },
-      { id: 'cyber_wed_theory', day: 'Wednesday', time: '3:25–4:20', type: 'Theory' },
-    ],
-  },
-  {
-    name: 'HCI',
-    classes: [
-      { id: 'hci_tue_theory', day: 'Tuesday', time: '10:50–11:45', type: 'Theory' },
-      { id: 'hci_wed_theory', day: 'Wednesday', time: '9:00–9:55', type: 'Theory' },
-      { id: 'hci_fri_theory', day: 'Friday', time: '10:50–11:45', type: 'Theory' },
-    ],
-  },
-  {
-    name: 'Data Science Theory',
-    classes: [
-      { id: 'ds_theory_mon', day: 'Monday', time: '2:30–3:25', type: 'Theory' },
-      { id: 'ds_theory_tue', day: 'Tuesday', time: '2:30–3:25', type: 'Theory' },
-      { id: 'ds_theory_wed', day: 'Wednesday', time: '9:55–10:50', type: 'Theory' },
-    ],
-  },
-  {
-    name: 'Data Science Lab',
-    classes: [
-      { id: 'ds_lab_tue', day: 'Tuesday', time: '12:40–2:30', type: 'Lab' },
+      { id: 'devops_theory_tue', day: 'Tuesday', time: '3:25–4:20', type: 'Theory', room: 'ARD-402' },
+      { id: 'devops_theory_thu', day: 'Thursday', time: '10:50–11:45', type: 'Theory', room: 'ARD-402' },
     ],
   },
   {
     name: 'DevOps Lab',
     classes: [
-      { id: 'devops_lab_tue', day: 'Tuesday', time: '9:00–10:50', type: 'Lab' },
-      { id: 'devops_lab_wed', day: 'Wednesday', time: '12:40–2:30', type: 'Lab' },
+      { id: 'devops_lab_tue', day: 'Tuesday', time: '9:00–9:55', type: 'Lab', room: 'ADS-C07' },
+      { id: 'devops_lab_wed', day: 'Wednesday', time: '12:40–1:35', type: 'Lab', room: 'ADS-C09' },
+    ],
+  },
+  {
+    name: 'Data Science Theory',
+    classes: [
+      { id: 'ds_theory_mon', day: 'Monday', time: '2:30–3:25', type: 'Theory', room: 'DSD-404' },
+      { id: 'ds_theory_tue', day: 'Tuesday', time: '2:30–3:25', type: 'Theory', room: 'DSD-404' },
+      { id: 'ds_theory_wed', day: 'Wednesday', time: '9:55–10:50', type: 'Theory', room: 'DSD-404' },
+    ],
+  },
+  {
+    name: 'Data Science Lab',
+    classes: [
+      { id: 'ds_lab_tue', day: 'Tuesday', time: '12:40–1:35', type: 'Lab', room: 'DPD-C04' },
+    ],
+  },
+  {
+    name: 'HCI',
+    classes: [
+      { id: 'hci_tue_theory', day: 'Tuesday', time: '10:50–11:45', type: 'Theory', room: 'SUG-402' },
+      { id: 'hci_wed_theory', day: 'Wednesday', time: '9:00–9:55', type: 'Theory', room: 'SUG-404' },
+      { id: 'hci_thu_theory', day: 'Thursday', time: '9:00–9:55', type: 'Theory', room: 'SUG-401' },
+    ],
+  },
+  {
+    name: 'Cybersecurity',
+    classes: [
+      { id: 'cyber_mon_theory', day: 'Monday', time: '3:25–4:20', type: 'Theory', room: 'PAB-402' },
+      { id: 'cyber_fri_theory', day: 'Friday', time: '9:55–10:50', type: 'Theory', room: 'PAB-403' },
     ],
   },
   {
     name: 'Flexi',
     classes: [
-      { id: 'flexi_thu', day: 'Thursday', time: '1:35–2:30', type: 'Flexi' },
-      { id: 'flexi_fri', day: 'Friday', time: '12:40–2:30', type: 'Flexi' },
+      { id: 'flexi_thu', day: 'Thursday', time: '12:40–1:35', type: 'Flexi', room: 'SKM-C09 / NIZ-C10' },
+      { id: 'flexi_fri_230', day: 'Friday', time: '2:30–3:25', type: 'Flexi', room: 'SKM-C09 / NIZ-C10' },
+      { id: 'flexi_fri_325', day: 'Friday', time: '3:25–4:20', type: 'Flexi', room: 'SKM-C09 / NIZ-C10' },
     ],
   },
 ];
@@ -178,7 +196,7 @@ export default function TimetablePage() {
     return { attended, total, percentage };
   };
 
-  const totalClasses = 17;
+  const totalClasses = attendanceConfig.reduce((sum, subject) => sum + subject.classes.length, 0);
   const totalAttended = attendanceConfig.reduce((sum, subject) => {
     return sum + subject.classes.filter((c) => attendance[c.id]).length;
   }, 0);
@@ -371,7 +389,7 @@ export default function TimetablePage() {
                                 {cls.day} – {cls.time}
                               </span>
                               <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-0.5">
-                                {cls.type} Class
+                                {cls.type} Class{cls.room && ` • ${cls.room}`}
                               </span>
                             </div>
                           </div>
