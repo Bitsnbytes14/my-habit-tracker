@@ -13,6 +13,7 @@ import {
   getSleepStreak,
   getCollegeStreak,
   getStepsStreak,
+  getSkincareStreak,
 } from '@/lib/streaks';
 
 export default function Dashboard() {
@@ -56,6 +57,12 @@ export default function Dashboard() {
   const sleepStreak = getSleepStreak(data);
   const proteinStreak = getProteinStreak(data);
 
+  // Skincare states
+  const skincareToday = data.skincare?.[today] || { morning: false, night: false };
+  const morningDone = skincareToday.morning;
+  const nightDone = skincareToday.night;
+  const skincareStreak = getSkincareStreak(data);
+
   // Toggle Handlers
   const toggleGym = () => {
     const wasDone = data.gym[today] === true;
@@ -90,6 +97,36 @@ export default function Dashboard() {
       },
     }));
     showFeedback(nextStatus === 'strong' ? 'Strong Day logged! 💪' : 'Reset Day logged 🔄', 'success');
+  };
+
+  const toggleMorning = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const wasDone = morningDone;
+    updateData((prev) => ({
+      skincare: {
+        ...(prev.skincare || {}),
+        [today]: {
+          ...(prev.skincare?.[today] || { morning: false, night: false }),
+          morning: !wasDone,
+        },
+      },
+    }));
+    showFeedback(wasDone ? 'Morning skincare marked pending' : 'Morning skincare completed ✓', 'success');
+  };
+
+  const toggleNight = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const wasDone = nightDone;
+    updateData((prev) => ({
+      skincare: {
+        ...(prev.skincare || {}),
+        [today]: {
+          ...(prev.skincare?.[today] || { morning: false, night: false }),
+          night: !wasDone,
+        },
+      },
+    }));
+    showFeedback(wasDone ? 'Night skincare marked pending' : 'Night skincare completed ✓', 'success');
   };
 
   // Sleep time helper
@@ -249,6 +286,44 @@ export default function Dashboard() {
               </p>
             </div>
             <p className="text-[10px] text-zinc-500 font-semibold uppercase">🔥 Streak: {stepsStreak}d</p>
+          </div>
+
+          {/* Skincare Card */}
+          <div
+            className={`relative overflow-hidden rounded-xl p-4 transition-all flex flex-col justify-between h-32 ${
+              (morningDone && nightDone)
+                ? 'bg-zinc-900 border-2 border-emerald-500/80 shadow-md shadow-emerald-500/5'
+                : 'bg-zinc-900 border border-zinc-800'
+            }`}
+          >
+            <div>
+              <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Skincare</span>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={toggleMorning}
+                  className={`flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-lg text-xs font-bold transition-all active:scale-[0.97] border ${
+                    morningDone
+                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                      : 'bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:bg-zinc-950/60'
+                  }`}
+                >
+                  <span>🌞</span>
+                  <span>{morningDone ? '✅' : '⏳'}</span>
+                </button>
+                <button
+                  onClick={toggleNight}
+                  className={`flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-lg text-xs font-bold transition-all active:scale-[0.97] border ${
+                    nightDone
+                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                      : 'bg-zinc-950/40 border-zinc-800 text-zinc-400 hover:bg-zinc-950/60'
+                  }`}
+                >
+                  <span>🌙</span>
+                  <span>{nightDone ? '✅' : '⏳'}</span>
+                </button>
+              </div>
+            </div>
+            <p className="text-[10px] text-zinc-500 font-semibold uppercase">🔥 Streak: {skincareStreak}d</p>
           </div>
 
           {/* Sleep Card */}

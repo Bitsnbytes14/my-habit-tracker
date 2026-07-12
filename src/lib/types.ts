@@ -52,6 +52,12 @@ export interface Settings {
   sleepGoal?: number;
 }
 
+export interface SkincareRecord {
+  morning: boolean;
+  night: boolean;
+}
+
+
 export interface LifeOSData {
   tasks: Task[];
   gym: Record<string, boolean>; // Key: YYYY-MM-DD
@@ -69,6 +75,7 @@ export interface LifeOSData {
   sleep?: Record<string, SleepRecord>; // Key: YYYY-MM-DD
   discipline?: Record<string, 'strong' | 'reset'>; // Key: YYYY-MM-DD
   activeSleepStart?: string | null;
+  skincare?: Record<string, SkincareRecord>; // Key: YYYY-MM-DD
 }
 
 export interface WeeklyReport {
@@ -106,6 +113,12 @@ export interface WeeklyReport {
   disciplineTotal: number;
   sleepAttended: number;
   sleepTotal: number;
+  skincareMorningPct?: number;
+  skincareMorningAttended?: number;
+  skincareMorningTotal?: number;
+  skincareNightPct?: number;
+  skincareNightAttended?: number;
+  skincareNightTotal?: number;
 }
 
 export const defaultSettings: Settings = {

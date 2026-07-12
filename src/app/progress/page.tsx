@@ -12,6 +12,7 @@ import {
   getStepsStreak,
   getDisciplineStreak,
   getSleepStreak,
+  getSkincareStreak,
   getLongestStreak
 } from '@/lib/streaks';
 import { attendanceConfig } from '@/lib/attendance';
@@ -95,6 +96,7 @@ export default function ProgressPage() {
     ...Object.keys(data.steps || {}),
     ...Object.keys(data.discipline || {}),
     ...Object.keys(data.sleep || {}),
+    ...Object.keys(data.skincare || {}),
     ...(data.meals || []).map(m => m.date),
     ...(data.weightLogs || []).map(w => w.date)
   ]);
@@ -108,7 +110,8 @@ export default function ProgressPage() {
   const proteinStreak = getProteinStreak(data);
   const disciplineStreak = getDisciplineStreak(data);
   const sleepStreak = getSleepStreak(data);
-  const bestStreak = Math.max(gymStreak, collegeStreak, prayerStreak, proteinStreak, stepsStreak, disciplineStreak, sleepStreak);
+  const skincareStreak = getSkincareStreak(data);
+  const bestStreak = Math.max(gymStreak, collegeStreak, prayerStreak, proteinStreak, stepsStreak, disciplineStreak, sleepStreak, skincareStreak);
 
   // Highest score calculation
   let highestScore = 0;
@@ -199,6 +202,12 @@ export default function ProgressPage() {
     // 9. Discipline
     addComp('Discipline', currentWeekReport.disciplineAttended, previousWeekReport.disciplineAttended, 7, 'days');
 
+    // Skincare
+    if (currentWeekReport.skincareMorningPct !== undefined && previousWeekReport?.skincareMorningPct !== undefined) {
+      addComp('Skincare Morning', currentWeekReport.skincareMorningAttended!, previousWeekReport.skincareMorningAttended!, 7, 'days');
+      addComp('Skincare Night', currentWeekReport.skincareNightAttended!, previousWeekReport.skincareNightAttended!, 7, 'days');
+    }
+
     // 10. Todos
     const todoDiff = currentWeekReport.todosAttended - previousWeekReport.todosAttended;
     comparisons.push({
@@ -223,7 +232,9 @@ export default function ProgressPage() {
       { name: 'Todos', current: currentWeekReport.todoPct, previous: previousWeekReport.todoPct },
       { name: 'Class Attendance', current: currentWeekReport.classAttendancePct, previous: previousWeekReport.classAttendancePct },
       { name: 'Discipline', current: currentWeekReport.disciplinePct, previous: previousWeekReport.disciplinePct },
-      { name: 'Sleep', current: currentWeekReport.sleepPct, previous: previousWeekReport.sleepPct }
+      { name: 'Sleep', current: currentWeekReport.sleepPct, previous: previousWeekReport.sleepPct },
+      { name: 'Skincare Morning', current: currentWeekReport.skincareMorningPct ?? 0, previous: previousWeekReport?.skincareMorningPct ?? 0 },
+      { name: 'Skincare Night', current: currentWeekReport.skincareNightPct ?? 0, previous: previousWeekReport?.skincareNightPct ?? 0 }
     ];
 
     let maxDiff = 0;
@@ -343,6 +354,72 @@ export default function ProgressPage() {
         ? `⚠️ Discipline declined by ${Math.abs(discDiff)} days.`
         : 'Discipline level remained steady.'
     : 'No comparison insights available yet.';
+
+  // --- Skincare analytics calculation ---
+  const skincareLogs = Object.values(data.skincare || {});
+  const morningCompletedCount = skincareLogs.filter(s => s.morning).length;
+  const morningCompletionPct = skincareLogs.length > 0 ? (morningCompletedCount / skincareLogs.length) * 100 : 0;
+
+  const nightCompletedCount = skincareLogs.filter(s => s.night).length;
+  const nightCompletionPct = skincareLogs.length > 0 ? (nightCompletedCount / skincareLogs.length) * 100 : 0;
+
+  const overallSkincarePct = skincareLogs.length > 0
+    ? ((morningCompletedCount + nightCompletedCount) / (skincareLogs.length * 2)) * 100
+    : 0;
+
+  const skincareLongestStreak = getLongestStreak(data, dateStr => data.skincare?.[dateStr]?.morning === true && data.skincare?.[dateStr]?.night === true);
+
+  // Weekly Skincare Completion
+  const skincareStart = new Date(currentMondayStr);
+  const weeklyDates: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(skincareStart);
+    d.setDate(skincareStart.getDate() + i);
+    weeklyDates.push(formatDateString(d));
+  }
+  const weeklyMorningCompleted = weeklyDates.filter(d => data.skincare?.[d]?.morning === true).length;
+  const weeklyNightCompleted = weeklyDates.filter(d => data.skincare?.[d]?.night === true).length;
+
+  // Monthly Skincare Completion
+  const monthlyDates: string[] = [];
+  const todayDateObj = new Date();
+  const daysPassedInMonth = todayDateObj.getDate();
+  for (let i = 1; i <= daysPassedInMonth; i++) {
+    const d = new Date(todayDateObj.getFullYear(), todayDateObj.getMonth(), i);
+    monthlyDates.push(formatDateString(d));
+  }
+  const monthlyMorningCompleted = monthlyDates.filter(d => data.skincare?.[d]?.morning === true).length;
+  const monthlyNightCompleted = monthlyDates.filter(d => data.skincare?.[d]?.night === true).length;
+
+  // Weekly Insights
+  const last7Days = Array.from({ length: 7 }, (_, i) => getOffsetDateString(-i));
+  const prev7Days = Array.from({ length: 7 }, (_, i) => getOffsetDateString(-i - 7));
+
+  const morningCompletedLast7 = last7Days.filter(d => data.skincare?.[d]?.morning === true).length;
+  const morningCompletedPrev7 = prev7Days.filter(d => data.skincare?.[d]?.morning === true).length;
+
+  const nightCompletedLast7 = last7Days.filter(d => data.skincare?.[d]?.night === true).length;
+  const nightCompletedPrev7 = prev7Days.filter(d => data.skincare?.[d]?.night === true).length;
+
+  const morningDiff = morningCompletedLast7 - morningCompletedPrev7;
+  let skincareMorningInsight = `🌞 Morning skincare completed on ${morningCompletedLast7} of the last 7 days.`;
+  if (morningDiff > 0) {
+    skincareMorningInsight = `🌞 Morning skincare completed on ${morningCompletedLast7} of the last 7 days (improved from ${morningCompletedPrev7}/7, +${morningDiff} days).`;
+  } else if (morningDiff < 0) {
+    skincareMorningInsight = `🌞 Morning skincare completed on ${morningCompletedLast7} of the last 7 days (declined from ${morningCompletedPrev7}/7, ${morningDiff} days).`;
+  } else {
+    skincareMorningInsight = `🌞 Morning skincare completed on ${morningCompletedLast7} of the last 7 days (steady compared to previous week).`;
+  }
+
+  const nightDiff = nightCompletedLast7 - nightCompletedPrev7;
+  let skincareNightInsight = `🌙 Night skincare completed on ${nightCompletedLast7} of the last 7 days.`;
+  if (nightDiff > 0) {
+    skincareNightInsight = `🌙 Night skincare improved from ${nightCompletedPrev7}/7 to ${nightCompletedLast7}/7 (improved by ${nightDiff} days).`;
+  } else if (nightDiff < 0) {
+    skincareNightInsight = `🌙 Night skincare declined from ${nightCompletedPrev7}/7 to ${nightCompletedLast7}/7 (dropped by ${Math.abs(nightDiff)} days).`;
+  } else {
+    skincareNightInsight = `🌙 Night skincare steady at ${nightCompletedLast7}/7 compared to previous week.`;
+  }
 
   // --- Recovery Score calculations ---
   const last30Days = Array.from({ length: 30 }, (_, i) => getOffsetDateString(-i));
@@ -526,6 +603,28 @@ export default function ProgressPage() {
             </div>
           </div>
 
+          {/* Skincare Morning */}
+          <div>
+            <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+              <span className="text-zinc-300">🌞 Skincare Morning</span>
+              <span className="text-zinc-400">{currentWeekReport.skincareMorningAttended || 0}/{currentWeekReport.skincareMorningTotal || 7} • <span className="text-blue-400">{(currentWeekReport.skincareMorningPct || 0).toFixed(0)}%</span></span>
+            </div>
+            <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
+              <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${currentWeekReport.skincareMorningPct || 0}%` }} />
+            </div>
+          </div>
+
+          {/* Skincare Night */}
+          <div>
+            <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+              <span className="text-zinc-300">🌙 Skincare Night</span>
+              <span className="text-zinc-400">{currentWeekReport.skincareNightAttended || 0}/{currentWeekReport.skincareNightTotal || 7} • <span className="text-blue-400">{(currentWeekReport.skincareNightPct || 0).toFixed(0)}%</span></span>
+            </div>
+            <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
+              <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${currentWeekReport.skincareNightPct || 0}%` }} />
+            </div>
+          </div>
+
           {/* Class Attendance */}
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
@@ -679,6 +778,55 @@ export default function ProgressPage() {
               </div>
               <div className="col-span-2 bg-indigo-950/40 p-3 rounded-xl border border-indigo-500/20 text-center">
                 <p className="text-xs font-extrabold text-indigo-300">{disciplineInsight}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Skincare Analytics */}
+        <div>
+          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Skincare Analytics</h3>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Morning Completion</span>
+                <p className="text-sm font-black text-white mt-0.5">
+                  {morningCompletedCount}/{skincareLogs.length} • <span className="text-emerald-400 text-xs font-bold">{morningCompletionPct.toFixed(1)}%</span>
+                </p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Night Completion</span>
+                <p className="text-sm font-black text-white mt-0.5">
+                  {nightCompletedCount}/{skincareLogs.length} • <span className="text-emerald-400 text-xs font-bold">{nightCompletionPct.toFixed(1)}%</span>
+                </p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Overall Completion</span>
+                <p className="text-sm font-black text-indigo-400 mt-0.5">
+                  {morningCompletedCount + nightCompletedCount}/{skincareLogs.length * 2} • <span className="text-xs font-bold">{overallSkincarePct.toFixed(1)}%</span>
+                </p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Skincare Streak</span>
+                <p className="text-base font-black text-white mt-0.5">🔥 {skincareStreak}d (Best {skincareLongestStreak}d)</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Weekly Completion</span>
+                <p className="text-xs font-bold text-zinc-300 mt-1">
+                  🌞 {weeklyMorningCompleted}/7d ({((weeklyMorningCompleted/7)*100).toFixed(0)}%) <br /> 🌙 {weeklyNightCompleted}/7d ({((weeklyNightCompleted/7)*100).toFixed(0)}%)
+                </p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Monthly Completion</span>
+                <p className="text-xs font-bold text-zinc-300 mt-1">
+                  🌞 {monthlyMorningCompleted}/{daysPassedInMonth}d ({((monthlyMorningCompleted/daysPassedInMonth)*100).toFixed(0)}%) <br /> 🌙 {monthlyNightCompleted}/{daysPassedInMonth}d ({((monthlyNightCompleted/daysPassedInMonth)*100).toFixed(0)}%)
+                </p>
+              </div>
+              <div className="col-span-2 bg-indigo-950/40 p-3.5 rounded-xl border border-indigo-500/20 space-y-1.5">
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Weekly Insights</span>
+                <p className="text-xs font-extrabold text-indigo-300">{skincareMorningInsight}</p>
+                <p className="text-xs font-extrabold text-indigo-300">{skincareNightInsight}</p>
+                <p className="text-xs font-extrabold text-indigo-300">✨ Current skincare streak: {skincareStreak} days.</p>
               </div>
             </div>
           </div>
@@ -962,6 +1110,30 @@ export default function ProgressPage() {
                   <div className="h-full bg-yellow-500" style={{ width: `${selectedWeeklyReport.disciplinePct}%` }} />
                 </div>
               </div>
+
+              {selectedWeeklyReport.skincareMorningPct !== undefined && (
+                <div>
+                  <div className="flex justify-between items-center text-xs font-bold mb-1">
+                    <span className="text-zinc-400">🌞 Skincare Morning</span>
+                    <span className="text-zinc-300">{selectedWeeklyReport.skincareMorningAttended}/{selectedWeeklyReport.skincareMorningTotal} • <span className="text-blue-400">{selectedWeeklyReport.skincareMorningPct.toFixed(0)}%</span></span>
+                  </div>
+                  <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
+                    <div className="h-full bg-emerald-500" style={{ width: `${selectedWeeklyReport.skincareMorningPct}%` }} />
+                  </div>
+                </div>
+              )}
+
+              {selectedWeeklyReport.skincareNightPct !== undefined && (
+                <div>
+                  <div className="flex justify-between items-center text-xs font-bold mb-1">
+                    <span className="text-zinc-400">🌙 Skincare Night</span>
+                    <span className="text-zinc-300">{selectedWeeklyReport.skincareNightAttended}/{selectedWeeklyReport.skincareNightTotal} • <span className="text-blue-400">{selectedWeeklyReport.skincareNightPct.toFixed(0)}%</span></span>
+                  </div>
+                  <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
+                    <div className="h-full bg-indigo-500" style={{ width: `${selectedWeeklyReport.skincareNightPct}%` }} />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div className="flex justify-between items-center text-xs font-bold mb-1">

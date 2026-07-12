@@ -125,6 +125,15 @@ export const calculateWeeklyStats = (
   const recoveryScores = dates.map(d => calculateRecoveryScore(data, d));
   const avgRecoveryScore = Math.round(recoveryScores.reduce((acc, curr) => acc + curr, 0) / 7);
 
+  // 12. Skincare Morning & Night
+  const skincareMorningAttended = dates.filter(d => data.skincare?.[d]?.morning === true).length;
+  const skincareMorningTotal = 7;
+  const skincareMorningPct = (skincareMorningAttended / skincareMorningTotal) * 100;
+
+  const skincareNightAttended = dates.filter(d => data.skincare?.[d]?.night === true).length;
+  const skincareNightTotal = 7;
+  const skincareNightPct = (skincareNightAttended / skincareNightTotal) * 100;
+
   return {
     weekNumber,
     startDate: mondayStr,
@@ -159,7 +168,13 @@ export const calculateWeeklyStats = (
     disciplineAttended,
     disciplineTotal,
     sleepAttended,
-    sleepTotal
+    sleepTotal,
+    skincareMorningPct,
+    skincareMorningAttended,
+    skincareMorningTotal,
+    skincareNightPct,
+    skincareNightAttended,
+    skincareNightTotal
   };
 };
 
@@ -181,6 +196,7 @@ export const checkAndArchiveCompletedWeeks = (
     ...Object.keys(data.steps || {}),
     ...Object.keys(data.discipline || {}),
     ...Object.keys(data.sleep || {}),
+    ...Object.keys(data.skincare || {}),
     ...(data.meals || []).map(m => m.date),
     ...(data.weightLogs || []).map(w => w.date)
   ].sort();
@@ -234,7 +250,11 @@ export const generateWeeklySummary = (current: WeeklyReport, previous: WeeklyRep
     { name: 'class attendance', current: current.classAttendancePct, previous: previous.classAttendancePct },
     { name: 'discipline', current: current.disciplinePct, previous: previous.disciplinePct },
     { name: 'sleep consistency', current: current.sleepPct, previous: previous.sleepPct },
-    { name: 'Recovery Score', current: current.avgRecoveryScore, previous: previous.avgRecoveryScore }
+    { name: 'Recovery Score', current: current.avgRecoveryScore, previous: previous.avgRecoveryScore },
+    ...(current.skincareMorningPct !== undefined && previous.skincareMorningPct !== undefined ? [
+      { name: 'morning skincare routine', current: current.skincareMorningPct, previous: previous.skincareMorningPct },
+      { name: 'night skincare routine', current: current.skincareNightPct ?? 0, previous: previous.skincareNightPct ?? 0 }
+    ] : [])
   ];
 
   habits.forEach(h => {
@@ -298,7 +318,9 @@ export const generateWeeklySummary = (current: WeeklyReport, previous: WeeklyRep
     'class attendance': 'Focus on improving your academic class attendance next week.',
     'discipline': 'Try to stay disciplined and avoid resets next week.',
     'sleep consistency': 'Focus on maintaining a consistent sleep schedule next week.',
-    'Recovery Score': 'Prioritize your overall rest and recovery next week.'
+    'Recovery Score': 'Prioritize your overall rest and recovery next week.',
+    'morning skincare routine': 'Prioritize completing your morning skincare routine next week.',
+    'night skincare routine': 'Prioritize completing your night skincare routine next week.'
   };
 
   const advice = adviceMap[focusHabit.name] || 'Focus on maintaining consistency next week.';

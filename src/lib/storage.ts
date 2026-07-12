@@ -19,7 +19,9 @@ export const getDefaultData = (): LifeOSData => ({
   sleep: {},
   discipline: {},
   activeSleepStart: null,
+  skincare: {},
 });
+
 
 export const getLifeOSData = (): LifeOSData => {
   if (typeof window === 'undefined') return getDefaultData();
@@ -78,6 +80,7 @@ export const getLifeOSData = (): LifeOSData => {
       sleep: parsed.sleep || {},
       discipline: parsed.discipline || {},
       activeSleepStart: parsed.activeSleepStart || null,
+      skincare: parsed.skincare || {},
     };
 
     if (migratedAny) {

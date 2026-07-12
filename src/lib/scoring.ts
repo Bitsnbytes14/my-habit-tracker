@@ -4,36 +4,36 @@ import { getTodayString } from './storage';
 export const calculateDailyScore = (data: LifeOSData, dateStr: string = getTodayString()): number => {
   let score = 0;
 
-  // 1. Prayers (each done = 6pts, max 30)
+  // 1. Prayers (each done = 5pts, max 25)
   const prayers = data.prayers[dateStr];
   let prayersScore = 0;
   if (prayers) {
     const doneCount = Object.values(prayers).filter(val => val === 'done').length;
-    prayersScore = Math.min(doneCount * 6, 30);
+    prayersScore = Math.min(doneCount * 5, 25);
     score += prayersScore;
   }
 
-  // 2. Gym (15pts)
+  // 2. Gym (10pts)
   const gymDone = data.gym[dateStr] === true;
   let gymScore = 0;
   if (gymDone) {
-    gymScore = 15;
+    gymScore = 10;
     score += gymScore;
   }
 
-  // 3. Protein goal (15pts)
+  // 3. Protein goal (10pts)
   const todayMeals = data.meals.filter((m) => m.date === dateStr);
   const proteinGoal = data.settings?.proteinGoal || 120;
   const totalProtein = todayMeals.reduce((acc, meal) => acc + (meal.protein || 0), 0);
-  const proteinScore = Math.min((totalProtein / proteinGoal) * 15, 15);
+  const proteinScore = Math.min((totalProtein / proteinGoal) * 10, 10);
   score += proteinScore;
 
-  // 4. Tasks ratio (15pts)
+  // 4. Tasks ratio (10pts)
   const activeTodos = data.todos ? data.todos.filter(t => !t.archived) : [];
   let tasksScore = 0;
   if (activeTodos.length > 0) {
     const doneTasks = activeTodos.filter(t => t.done).length;
-    tasksScore = (doneTasks / activeTodos.length) * 15;
+    tasksScore = (doneTasks / activeTodos.length) * 10;
     score += tasksScore;
   } else {
     tasksScore = 0;
@@ -57,6 +57,13 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
   const collegeDone = data.college?.[dateStr] === true;
   if (collegeDone) {
     score += 10;
+  }
+
+  // 8. Skincare (Morning = 5pts, Night = 5pts)
+  const skincare = data.skincare?.[dateStr];
+  if (skincare) {
+    if (skincare.morning) score += 5;
+    if (skincare.night) score += 5;
   }
 
   return Math.round(score);

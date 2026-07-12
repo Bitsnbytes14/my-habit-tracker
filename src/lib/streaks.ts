@@ -70,6 +70,10 @@ export const getSleepStreak = (data: LifeOSData) => {
   return calculateStreak((dateStr) => (data.sleep?.[dateStr]?.duration || 0) >= goal);
 };
 
+export const getSkincareStreak = (data: LifeOSData) => {
+  return calculateStreak((dateStr) => data.skincare?.[dateStr]?.morning === true && data.skincare?.[dateStr]?.night === true);
+};
+
 export const getLongestStreak = (data: LifeOSData, checkDay: (dateStr: string) => boolean): number => {
   const trackedDates = [
     ...Object.keys(data.gym || {}),
@@ -80,6 +84,7 @@ export const getLongestStreak = (data: LifeOSData, checkDay: (dateStr: string) =
     ...Object.keys(data.steps || {}),
     ...Object.keys(data.sleep || {}),
     ...Object.keys(data.discipline || {}),
+    ...Object.keys(data.skincare || {}),
     ...(data.meals || []).map(m => m.date),
     ...(data.weightLogs || []).map(w => w.date)
   ].sort();
