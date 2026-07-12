@@ -13,8 +13,10 @@ import {
   getDisciplineStreak,
   getSleepStreak,
   getSkincareStreak,
+  getEssentialsStreak,
   getLongestStreak
 } from '@/lib/streaks';
+import { DailyEssentialsRecord } from '@/lib/types';
 import { attendanceConfig } from '@/lib/attendance';
 import {
   checkAndArchiveCompletedWeeks,
@@ -97,6 +99,7 @@ export default function ProgressPage() {
     ...Object.keys(data.discipline || {}),
     ...Object.keys(data.sleep || {}),
     ...Object.keys(data.skincare || {}),
+    ...Object.keys(data.dailyEssentials || {}),
     ...(data.meals || []).map(m => m.date),
     ...(data.weightLogs || []).map(w => w.date)
   ]);
@@ -111,7 +114,8 @@ export default function ProgressPage() {
   const disciplineStreak = getDisciplineStreak(data);
   const sleepStreak = getSleepStreak(data);
   const skincareStreak = getSkincareStreak(data);
-  const bestStreak = Math.max(gymStreak, collegeStreak, prayerStreak, proteinStreak, stepsStreak, disciplineStreak, sleepStreak, skincareStreak);
+  const essentialsStreak = getEssentialsStreak(data);
+  const bestStreak = Math.max(gymStreak, collegeStreak, prayerStreak, proteinStreak, stepsStreak, disciplineStreak, sleepStreak, skincareStreak, essentialsStreak);
 
   // Highest score calculation
   let highestScore = 0;
@@ -208,6 +212,11 @@ export default function ProgressPage() {
       addComp('Skincare Night', currentWeekReport.skincareNightAttended!, previousWeekReport.skincareNightAttended!, 7, 'days');
     }
 
+    // Daily Essentials
+    if (currentWeekReport.essentialsPct !== undefined && previousWeekReport?.essentialsPct !== undefined) {
+      addComp('Daily Essentials', currentWeekReport.essentialsAttended!, previousWeekReport.essentialsAttended!, 42, 'items');
+    }
+
     // 10. Todos
     const todoDiff = currentWeekReport.todosAttended - previousWeekReport.todosAttended;
     comparisons.push({
@@ -234,7 +243,8 @@ export default function ProgressPage() {
       { name: 'Discipline', current: currentWeekReport.disciplinePct, previous: previousWeekReport.disciplinePct },
       { name: 'Sleep', current: currentWeekReport.sleepPct, previous: previousWeekReport.sleepPct },
       { name: 'Skincare Morning', current: currentWeekReport.skincareMorningPct ?? 0, previous: previousWeekReport?.skincareMorningPct ?? 0 },
-      { name: 'Skincare Night', current: currentWeekReport.skincareNightPct ?? 0, previous: previousWeekReport?.skincareNightPct ?? 0 }
+      { name: 'Skincare Night', current: currentWeekReport.skincareNightPct ?? 0, previous: previousWeekReport?.skincareNightPct ?? 0 },
+      { name: 'Daily Essentials', current: currentWeekReport.essentialsPct ?? 0, previous: previousWeekReport?.essentialsPct ?? 0 }
     ];
 
     let maxDiff = 0;
@@ -420,6 +430,131 @@ export default function ProgressPage() {
   } else {
     skincareNightInsight = `🌙 Night skincare steady at ${nightCompletedLast7}/7 compared to previous week.`;
   }
+
+  // --- Daily Essentials analytics calculation ---
+  const essentialsLogs = Object.values(data.dailyEssentials || {});
+  const totalDaysEssentials = essentialsLogs.length;
+
+  const countEssentialItem = (key: keyof DailyEssentialsRecord) => {
+    return essentialsLogs.filter(e => e[key] === true).length;
+  };
+
+  const getEssentialItemPct = (key: keyof DailyEssentialsRecord) => {
+    const count = countEssentialItem(key);
+    return totalDaysEssentials > 0 ? (count / totalDaysEssentials) * 100 : 0;
+  };
+
+  // Overall Essentials Completion %
+  let totalSubItemsCompleted = 0;
+  essentialsLogs.forEach(e => {
+    if (e.multivitamin) totalSubItemsCompleted++;
+    if (e.fishOil) totalSubItemsCompleted++;
+    if (e.ashwagandha) totalSubItemsCompleted++;
+    if (e.moringa) totalSubItemsCompleted++;
+    if (e.readingEnglish) totalSubItemsCompleted++;
+    if (e.speakingEnglish) totalSubItemsCompleted++;
+  });
+  const overallEssentialsPct = totalDaysEssentials > 0
+    ? (totalSubItemsCompleted / (totalDaysEssentials * 6)) * 100
+    : 0;
+
+  const essentialsLongestStreak = getLongestStreak(data, dateStr => {
+    const e = data.dailyEssentials?.[dateStr];
+    return !!(e && e.multivitamin && e.fishOil && e.ashwagandha && e.moringa && e.readingEnglish && e.speakingEnglish);
+  });
+
+  // Weekly Essentials Completion
+  const weeklyEssentialsDates = weeklyDates;
+  let weeklySubItemsCompleted = 0;
+  const countWeeklyEssentialItem = (key: keyof DailyEssentialsRecord) => {
+    return weeklyEssentialsDates.filter(d => data.dailyEssentials?.[d]?.[key] === true).length;
+  };
+  weeklyEssentialsDates.forEach(d => {
+    const e = data.dailyEssentials?.[d];
+    if (e) {
+      if (e.multivitamin) weeklySubItemsCompleted++;
+      if (e.fishOil) weeklySubItemsCompleted++;
+      if (e.ashwagandha) weeklySubItemsCompleted++;
+      if (e.moringa) weeklySubItemsCompleted++;
+      if (e.readingEnglish) weeklySubItemsCompleted++;
+      if (e.speakingEnglish) weeklySubItemsCompleted++;
+    }
+  });
+  const weeklyEssentialsPct = (weeklySubItemsCompleted / 42) * 100;
+
+  // Monthly Essentials Completion
+  const monthlyEssentialsDates = monthlyDates;
+  let monthlySubItemsCompleted = 0;
+  const countMonthlyEssentialItem = (key: keyof DailyEssentialsRecord) => {
+    return monthlyEssentialsDates.filter(d => data.dailyEssentials?.[d]?.[key] === true).length;
+  };
+  monthlyEssentialsDates.forEach(d => {
+    const e = data.dailyEssentials?.[d];
+    if (e) {
+      if (e.multivitamin) monthlySubItemsCompleted++;
+      if (e.fishOil) monthlySubItemsCompleted++;
+      if (e.ashwagandha) monthlySubItemsCompleted++;
+      if (e.moringa) monthlySubItemsCompleted++;
+      if (e.readingEnglish) monthlySubItemsCompleted++;
+      if (e.speakingEnglish) monthlySubItemsCompleted++;
+    }
+  });
+  const monthlyEssentialsPct = monthlyEssentialsDates.length > 0
+    ? (monthlySubItemsCompleted / (monthlyEssentialsDates.length * 6)) * 100
+    : 0;
+
+  // Weekly Insights
+  const last7DaysDates = last7Days;
+  const prev7DaysDates = prev7Days;
+
+  const getCompletedCountLast7 = (key: keyof DailyEssentialsRecord) => {
+    return last7DaysDates.filter(d => data.dailyEssentials?.[d]?.[key] === true).length;
+  };
+  const getCompletedCountPrev7 = (key: keyof DailyEssentialsRecord) => {
+    return prev7DaysDates.filter(d => data.dailyEssentials?.[d]?.[key] === true).length;
+  };
+
+  const keysList: (keyof DailyEssentialsRecord)[] = ['multivitamin', 'fishOil', 'ashwagandha', 'moringa', 'readingEnglish', 'speakingEnglish'];
+  const essentialDisplayNames: Record<keyof DailyEssentialsRecord, string> = {
+    multivitamin: 'Multivitamin 💊',
+    fishOil: 'Fish Oil 🐟',
+    ashwagandha: 'Ashwagandha 🌿',
+    moringa: 'Moringa 🍃',
+    readingEnglish: 'Read English 📖',
+    speakingEnglish: 'Speak English 🗣️',
+  };
+
+  // Weakest item in the last 7 days
+  let weakestItemKey = keysList[0];
+  let minCompletedCount = 8;
+  keysList.forEach(k => {
+    const count = getCompletedCountLast7(k);
+    if (count < minCompletedCount) {
+      minCompletedCount = count;
+      weakestItemKey = k;
+    }
+  });
+  const missedDaysCount = 7 - minCompletedCount;
+  const weakestInsightText = missedDaysCount > 0
+    ? `${essentialDisplayNames[weakestItemKey]} was missed on ${missedDaysCount} days this week.`
+    : `All Daily Essentials were completed perfectly this week! 🎉`;
+
+  // Most improved item compared to previous week
+  let mostImprovedItemKey = keysList[0];
+  let maxImprovement = -100;
+  keysList.forEach(k => {
+    const last7Count = getCompletedCountLast7(k);
+    const prev7Count = getCompletedCountPrev7(k);
+    const diff = last7Count - prev7Count;
+    if (diff > maxImprovement) {
+      maxImprovement = diff;
+      mostImprovedItemKey = k;
+    }
+  });
+
+  const mostImprovedInsightText = maxImprovement > 0
+    ? `${essentialDisplayNames[mostImprovedItemKey]} improved from ${getCompletedCountPrev7(mostImprovedItemKey)}/7 to ${getCompletedCountLast7(mostImprovedItemKey)}/7.`
+    : `Supplements & habits consistency remained steady compared to last week.`;
 
   // --- Recovery Score calculations ---
   const last30Days = Array.from({ length: 30 }, (_, i) => getOffsetDateString(-i));
@@ -625,6 +760,17 @@ export default function ProgressPage() {
             </div>
           </div>
 
+          {/* Daily Essentials */}
+          <div>
+            <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+              <span className="text-zinc-300">💊 Daily Essentials</span>
+              <span className="text-zinc-400">{currentWeekReport.essentialsAttended || 0}/{currentWeekReport.essentialsTotal || 42} • <span className="text-blue-400">{(currentWeekReport.essentialsPct || 0).toFixed(0)}%</span></span>
+            </div>
+            <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
+              <div className="h-full bg-teal-500 rounded-full transition-all duration-500" style={{ width: `${currentWeekReport.essentialsPct || 0}%` }} />
+            </div>
+          </div>
+
           {/* Class Attendance */}
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
@@ -827,6 +973,72 @@ export default function ProgressPage() {
                 <p className="text-xs font-extrabold text-indigo-300">{skincareMorningInsight}</p>
                 <p className="text-xs font-extrabold text-indigo-300">{skincareNightInsight}</p>
                 <p className="text-xs font-extrabold text-indigo-300">✨ Current skincare streak: {skincareStreak} days.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Daily Essentials Analytics */}
+        <div>
+          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Daily Essentials Analytics</h3>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Overall Completion</span>
+                <p className="text-sm font-black text-indigo-400 mt-0.5">
+                  {totalSubItemsCompleted}/{totalDaysEssentials * 6} • <span className="text-xs font-bold">{overallEssentialsPct.toFixed(1)}%</span>
+                </p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Essentials Streak</span>
+                <p className="text-base font-black text-white mt-0.5">🔥 {essentialsStreak}d (Best {essentialsLongestStreak}d)</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Weekly Completion</span>
+                <p className="text-xs font-bold text-zinc-300 mt-1">
+                  {weeklySubItemsCompleted}/42 items <br /> {weeklyEssentialsPct.toFixed(1)}%
+                </p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Monthly Completion</span>
+                <p className="text-xs font-bold text-zinc-300 mt-1">
+                  {monthlySubItemsCompleted}/{monthlyEssentialsDates.length * 6} items <br /> {monthlyEssentialsPct.toFixed(1)}%
+                </p>
+              </div>
+
+              {/* Item Individual Percentages */}
+              <div className="col-span-2 bg-zinc-950/50 p-4 rounded-xl border border-zinc-850 space-y-3.5">
+                <span className="text-[10px] text-zinc-550 font-bold uppercase tracking-wider block">Individual Checklist Performance</span>
+                
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  {[
+                    { key: 'multivitamin', label: 'Multivitamin 💊' },
+                    { key: 'fishOil', label: 'Fish Oil 🐟' },
+                    { key: 'ashwagandha', label: 'Ashwagandha 🌿' },
+                    { key: 'moringa', label: 'Moringa 🍃' },
+                    { key: 'readingEnglish', label: 'Read English 📖' },
+                    { key: 'speakingEnglish', label: 'Speak English 🗣️' }
+                  ].map(item => {
+                    const count = countEssentialItem(item.key as keyof DailyEssentialsRecord);
+                    const pct = getEssentialItemPct(item.key as keyof DailyEssentialsRecord);
+                    return (
+                      <div key={item.key} className="flex flex-col">
+                        <span className="text-xs font-bold text-zinc-400">{item.label}</span>
+                        <span className="text-sm font-black text-white mt-0.5">
+                          {count}/{totalDaysEssentials} • <span className="text-blue-400 text-xs font-bold">{pct.toFixed(1)}%</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Weekly Insights */}
+              <div className="col-span-2 bg-indigo-950/40 p-3.5 rounded-xl border border-indigo-500/20 space-y-1.5">
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Weekly Insights</span>
+                <p className="text-xs font-extrabold text-indigo-300">💡 {weakestInsightText}</p>
+                <p className="text-xs font-extrabold text-indigo-300">📈 {mostImprovedInsightText}</p>
+                <p className="text-xs font-extrabold text-indigo-300">✨ Current essentials streak: {essentialsStreak} days.</p>
               </div>
             </div>
           </div>
@@ -1131,6 +1343,18 @@ export default function ProgressPage() {
                   </div>
                   <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
                     <div className="h-full bg-indigo-500" style={{ width: `${selectedWeeklyReport.skincareNightPct}%` }} />
+                  </div>
+                </div>
+              )}
+
+              {selectedWeeklyReport.essentialsPct !== undefined && (
+                <div>
+                  <div className="flex justify-between items-center text-xs font-bold mb-1">
+                    <span className="text-zinc-400">💊 Daily Essentials</span>
+                    <span className="text-zinc-300">{selectedWeeklyReport.essentialsAttended}/{selectedWeeklyReport.essentialsTotal} • <span className="text-blue-400">{selectedWeeklyReport.essentialsPct.toFixed(0)}%</span></span>
+                  </div>
+                  <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
+                    <div className="h-full bg-teal-500" style={{ width: `${selectedWeeklyReport.essentialsPct}%` }} />
                   </div>
                 </div>
               )}

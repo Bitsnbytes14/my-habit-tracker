@@ -13,11 +13,11 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
     score += prayersScore;
   }
 
-  // 2. Gym (10pts)
+  // 2. Gym (8pts)
   const gymDone = data.gym[dateStr] === true;
   let gymScore = 0;
   if (gymDone) {
-    gymScore = 10;
+    gymScore = 8;
     score += gymScore;
   }
 
@@ -39,10 +39,10 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
     tasksScore = 0;
   }
 
-  // 5. 10K Steps (10pts)
+  // 5. 10K Steps (8pts)
   const stepsDone = data.steps?.[dateStr] === true;
   if (stepsDone) {
-    score += 10;
+    score += 8;
   }
 
   // 6. Coding/Work (15pts)
@@ -53,10 +53,10 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
     score += codingScore;
   }
 
-  // 7. College (10pts)
+  // 7. College (8pts)
   const collegeDone = data.college?.[dateStr] === true;
   if (collegeDone) {
-    score += 10;
+    score += 8;
   }
 
   // 8. Skincare (Morning = 5pts, Night = 5pts)
@@ -64,6 +64,19 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
   if (skincare) {
     if (skincare.morning) score += 5;
     if (skincare.night) score += 5;
+  }
+
+  // 9. Daily Essentials (each item completed = 1pt, max 6)
+  const essentials = data.dailyEssentials?.[dateStr];
+  if (essentials) {
+    let completedCount = 0;
+    if (essentials.multivitamin) completedCount++;
+    if (essentials.fishOil) completedCount++;
+    if (essentials.ashwagandha) completedCount++;
+    if (essentials.moringa) completedCount++;
+    if (essentials.readingEnglish) completedCount++;
+    if (essentials.speakingEnglish) completedCount++;
+    score += completedCount;
   }
 
   return Math.round(score);

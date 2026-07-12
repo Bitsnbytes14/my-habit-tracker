@@ -57,6 +57,16 @@ export interface SkincareRecord {
   night: boolean;
 }
 
+export interface DailyEssentialsRecord {
+  multivitamin: boolean;
+  fishOil: boolean;
+  ashwagandha: boolean;
+  moringa: boolean;
+  readingEnglish: boolean;
+  speakingEnglish: boolean;
+}
+
+
 
 export interface LifeOSData {
   tasks: Task[];
@@ -76,6 +86,7 @@ export interface LifeOSData {
   discipline?: Record<string, 'strong' | 'reset'>; // Key: YYYY-MM-DD
   activeSleepStart?: string | null;
   skincare?: Record<string, SkincareRecord>; // Key: YYYY-MM-DD
+  dailyEssentials?: Record<string, DailyEssentialsRecord>; // Key: YYYY-MM-DD
 }
 
 export interface WeeklyReport {
@@ -119,6 +130,15 @@ export interface WeeklyReport {
   skincareNightPct?: number;
   skincareNightAttended?: number;
   skincareNightTotal?: number;
+  essentialsPct?: number;
+  essentialsAttended?: number;
+  essentialsTotal?: number;
+  essentialsMultivitaminPct?: number;
+  essentialsFishOilPct?: number;
+  essentialsAshwagandhaPct?: number;
+  essentialsMoringaPct?: number;
+  essentialsReadingEnglishPct?: number;
+  essentialsSpeakingEnglishPct?: number;
 }
 
 export const defaultSettings: Settings = {

@@ -134,6 +134,27 @@ export const calculateWeeklyStats = (
   const skincareNightTotal = 7;
   const skincareNightPct = (skincareNightAttended / skincareNightTotal) * 100;
 
+  // 13. Daily Essentials (each item, and overall)
+  const essentialsMultivitaminAttended = dates.filter(d => data.dailyEssentials?.[d]?.multivitamin === true).length;
+  const essentialsFishOilAttended = dates.filter(d => data.dailyEssentials?.[d]?.fishOil === true).length;
+  const essentialsAshwagandhaAttended = dates.filter(d => data.dailyEssentials?.[d]?.ashwagandha === true).length;
+  const essentialsMoringaAttended = dates.filter(d => data.dailyEssentials?.[d]?.moringa === true).length;
+  const essentialsReadingEnglishAttended = dates.filter(d => data.dailyEssentials?.[d]?.readingEnglish === true).length;
+  const essentialsSpeakingEnglishAttended = dates.filter(d => data.dailyEssentials?.[d]?.speakingEnglish === true).length;
+
+  const essentialsAttended = essentialsMultivitaminAttended + essentialsFishOilAttended +
+                             essentialsAshwagandhaAttended + essentialsMoringaAttended +
+                             essentialsReadingEnglishAttended + essentialsSpeakingEnglishAttended;
+  const essentialsTotal = 7 * 6; // 7 days * 6 items = 42
+  const essentialsPct = (essentialsAttended / essentialsTotal) * 100;
+
+  const essentialsMultivitaminPct = (essentialsMultivitaminAttended / 7) * 100;
+  const essentialsFishOilPct = (essentialsFishOilAttended / 7) * 100;
+  const essentialsAshwagandhaPct = (essentialsAshwagandhaAttended / 7) * 100;
+  const essentialsMoringaPct = (essentialsMoringaAttended / 7) * 100;
+  const essentialsReadingEnglishPct = (essentialsReadingEnglishAttended / 7) * 100;
+  const essentialsSpeakingEnglishPct = (essentialsSpeakingEnglishAttended / 7) * 100;
+
   return {
     weekNumber,
     startDate: mondayStr,
@@ -174,7 +195,16 @@ export const calculateWeeklyStats = (
     skincareMorningTotal,
     skincareNightPct,
     skincareNightAttended,
-    skincareNightTotal
+    skincareNightTotal,
+    essentialsPct,
+    essentialsAttended,
+    essentialsTotal,
+    essentialsMultivitaminPct,
+    essentialsFishOilPct,
+    essentialsAshwagandhaPct,
+    essentialsMoringaPct,
+    essentialsReadingEnglishPct,
+    essentialsSpeakingEnglishPct
   };
 };
 
@@ -197,6 +227,7 @@ export const checkAndArchiveCompletedWeeks = (
     ...Object.keys(data.discipline || {}),
     ...Object.keys(data.sleep || {}),
     ...Object.keys(data.skincare || {}),
+    ...Object.keys(data.dailyEssentials || {}),
     ...(data.meals || []).map(m => m.date),
     ...(data.weightLogs || []).map(w => w.date)
   ].sort();
@@ -254,6 +285,9 @@ export const generateWeeklySummary = (current: WeeklyReport, previous: WeeklyRep
     ...(current.skincareMorningPct !== undefined && previous.skincareMorningPct !== undefined ? [
       { name: 'morning skincare routine', current: current.skincareMorningPct, previous: previous.skincareMorningPct },
       { name: 'night skincare routine', current: current.skincareNightPct ?? 0, previous: previous.skincareNightPct ?? 0 }
+    ] : []),
+    ...(current.essentialsPct !== undefined && previous.essentialsPct !== undefined ? [
+      { name: 'daily essentials completion', current: current.essentialsPct, previous: previous.essentialsPct }
     ] : [])
   ];
 
@@ -320,7 +354,8 @@ export const generateWeeklySummary = (current: WeeklyReport, previous: WeeklyRep
     'sleep consistency': 'Focus on maintaining a consistent sleep schedule next week.',
     'Recovery Score': 'Prioritize your overall rest and recovery next week.',
     'morning skincare routine': 'Prioritize completing your morning skincare routine next week.',
-    'night skincare routine': 'Prioritize completing your night skincare routine next week.'
+    'night skincare routine': 'Prioritize completing your night skincare routine next week.',
+    'daily essentials completion': 'Prioritize completing all your daily essentials checklist next week.'
   };
 
   const advice = adviceMap[focusHabit.name] || 'Focus on maintaining consistency next week.';

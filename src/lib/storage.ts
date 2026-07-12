@@ -20,6 +20,7 @@ export const getDefaultData = (): LifeOSData => ({
   discipline: {},
   activeSleepStart: null,
   skincare: {},
+  dailyEssentials: {},
 });
 
 
@@ -81,6 +82,7 @@ export const getLifeOSData = (): LifeOSData => {
       discipline: parsed.discipline || {},
       activeSleepStart: parsed.activeSleepStart || null,
       skincare: parsed.skincare || {},
+      dailyEssentials: parsed.dailyEssentials || {},
     };
 
     if (migratedAny) {

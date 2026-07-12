@@ -14,11 +14,14 @@ import {
   getCollegeStreak,
   getStepsStreak,
   getSkincareStreak,
+  getEssentialsStreak,
 } from '@/lib/streaks';
+import { DailyEssentialsRecord } from '@/lib/types';
 
 export default function Dashboard() {
   const { data, updateData, showFeedback } = useLifeOS();
   const today = getTodayString();
+  const [essentialsExpanded, setEssentialsExpanded] = React.useState(false);
 
   // Score Calculations
   const score = calculateDailyScore(data, today);
@@ -62,6 +65,18 @@ export default function Dashboard() {
   const morningDone = skincareToday.morning;
   const nightDone = skincareToday.night;
   const skincareStreak = getSkincareStreak(data);
+
+  // Daily Essentials states
+  const essentialsToday = data.dailyEssentials?.[today] || {
+    multivitamin: false,
+    fishOil: false,
+    ashwagandha: false,
+    moringa: false,
+    readingEnglish: false,
+    speakingEnglish: false,
+  };
+  const completedEssentialsCount = Object.values(essentialsToday).filter(Boolean).length;
+  const essentialsStreak = getEssentialsStreak(data);
 
   // Toggle Handlers
   const toggleGym = () => {
@@ -127,6 +142,35 @@ export default function Dashboard() {
       },
     }));
     showFeedback(wasDone ? 'Night skincare marked pending' : 'Night skincare completed ✓', 'success');
+  };
+
+  const toggleEssentialItem = (itemKey: keyof DailyEssentialsRecord) => {
+    const currentVal = !!essentialsToday[itemKey];
+    updateData((prev) => ({
+      dailyEssentials: {
+        ...(prev.dailyEssentials || {}),
+        [today]: {
+          ...(prev.dailyEssentials?.[today] || {
+            multivitamin: false,
+            fishOil: false,
+            ashwagandha: false,
+            moringa: false,
+            readingEnglish: false,
+            speakingEnglish: false,
+          }),
+          [itemKey]: !currentVal,
+        },
+      },
+    }));
+    const displayNames: Record<keyof DailyEssentialsRecord, string> = {
+      multivitamin: 'Multivitamin 💊',
+      fishOil: 'Fish Oil 🐟',
+      ashwagandha: 'Ashwagandha 🌿',
+      moringa: 'Moringa 🍃',
+      readingEnglish: 'Read English 📚',
+      speakingEnglish: 'Speak English 📚',
+    };
+    showFeedback(!currentVal ? `${displayNames[itemKey]} marked completed` : `${displayNames[itemKey]} marked pending`, 'success');
   };
 
   // Sleep time helper
@@ -413,6 +457,112 @@ export default function Dashboard() {
               />
             </div>
           </Link>
+
+          {/* Daily Essentials Card */}
+          <div
+            className={`col-span-2 relative overflow-hidden rounded-xl p-4 transition-all duration-300 ${
+              completedEssentialsCount === 6
+                ? 'bg-zinc-900 border-2 border-emerald-500/80 shadow-md shadow-emerald-500/5'
+                : 'bg-zinc-900 border border-zinc-800'
+            }`}
+          >
+            <div className="flex justify-between items-center w-full mb-2">
+              <div>
+                <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Habits Checklist</span>
+                <h4 className="text-base font-black text-white mt-0.5">Daily Essentials</h4>
+              </div>
+              <div className="flex items-center gap-3 select-none">
+                <span className="text-xs font-bold text-zinc-400">
+                  {completedEssentialsCount} / 6 Completed
+                </span>
+                <button
+                  onClick={() => setEssentialsExpanded(!essentialsExpanded)}
+                  className="px-3 py-1 bg-zinc-950 hover:bg-zinc-805 border border-zinc-800 rounded-lg text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-white transition-all flex items-center gap-1 select-none"
+                >
+                  {essentialsExpanded ? 'Hide Checklist ▴' : 'Show Checklist ▾'}
+                </button>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-zinc-950 rounded-full h-1.5 border border-zinc-850 overflow-hidden mb-2">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                style={{ width: `${(completedEssentialsCount / 6) * 100}%` }}
+              />
+            </div>
+
+            {/* Expanded Checklist */}
+            {essentialsExpanded && (
+              <div className="mt-4 grid grid-cols-2 gap-4 pt-3 border-t border-zinc-800 transition-all duration-300 ease-in-out">
+                {/* Supplements Column */}
+                <div>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2">💊 Supplements</span>
+                  <div className="space-y-2">
+                    {[
+                      { key: 'multivitamin', label: 'Multivitamin', emoji: '💊' },
+                      { key: 'fishOil', label: 'Fish Oil', emoji: '🐟' },
+                      { key: 'ashwagandha', label: 'Ashwagandha', emoji: '🌿' },
+                      { key: 'moringa', label: 'Moringa', emoji: '🍃' }
+                    ].map((item) => {
+                      const done = !!essentialsToday[item.key as keyof DailyEssentialsRecord];
+                      return (
+                        <div
+                          key={item.key}
+                          onClick={() => toggleEssentialItem(item.key as keyof DailyEssentialsRecord)}
+                          className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer select-none transition-all active:scale-[0.98] ${
+                            done
+                              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 font-bold'
+                              : 'bg-zinc-950/40 border-zinc-850 text-zinc-400 hover:bg-zinc-950/60'
+                          }`}
+                        >
+                          <span className="text-xs font-semibold">{item.emoji} {item.label}</span>
+                          <span className="text-xs font-black">{done ? '✅' : '⏳'}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Personal Development Column */}
+                <div>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider block mb-2">📚 Personal Development</span>
+                  <div className="space-y-2">
+                    {[
+                      { key: 'readingEnglish', label: 'Read English', emoji: '📖' },
+                      { key: 'speakingEnglish', label: 'Speak English', emoji: '🗣️' }
+                    ].map((item) => {
+                      const done = !!essentialsToday[item.key as keyof DailyEssentialsRecord];
+                      return (
+                        <div
+                          key={item.key}
+                          onClick={() => toggleEssentialItem(item.key as keyof DailyEssentialsRecord)}
+                          className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer select-none transition-all active:scale-[0.98] ${
+                            done
+                              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 font-bold'
+                              : 'bg-zinc-950/40 border-zinc-850 text-zinc-400 hover:bg-zinc-950/60'
+                          }`}
+                        >
+                          <span className="text-xs font-semibold">{item.emoji} {item.label}</span>
+                          <span className="text-xs font-black">{done ? '✅' : '⏳'}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="col-span-2 text-right pt-2">
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">🔥 Streak: {essentialsStreak}d</p>
+                </div>
+              </div>
+            )}
+            
+            {!essentialsExpanded && (
+              <div className="flex justify-between items-center mt-2.5">
+                <p className="text-[10px] text-zinc-500 font-semibold uppercase">🔥 Streak: {essentialsStreak}d</p>
+              </div>
+            )}
+          </div>
 
         </div>
       </section>
