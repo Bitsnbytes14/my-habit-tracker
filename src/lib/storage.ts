@@ -16,6 +16,9 @@ export const getDefaultData = (): LifeOSData => ({
   college: {},
   steps: {},
   weeklyReports: [],
+  sleep: {},
+  discipline: {},
+  activeSleepStart: null,
 });
 
 export const getLifeOSData = (): LifeOSData => {
@@ -43,14 +46,14 @@ export const getLifeOSData = (): LifeOSData => {
     let tasks = parsed.tasks || [];
     let migratedAny = false;
     if (Array.isArray(tasks) && tasks.length > 0) {
-      const migrated = tasks.map((t: any) => ({
+      const migrated = tasks.map((t: { id?: string; title?: string; done?: boolean }) => ({
         id: t.id || Date.now().toString() + Math.random().toString(),
         text: t.title || '',
         done: !!t.done,
         archived: false,
       }));
-      const existingIds = new Set(todos.map((todo: any) => todo.id));
-      const newMigrated = migrated.filter((mt: any) => !existingIds.has(mt.id));
+      const existingIds = new Set(todos.map((todo: { id: string }) => todo.id));
+      const newMigrated = migrated.filter((mt: { id: string }) => !existingIds.has(mt.id));
       if (newMigrated.length > 0) {
         todos = [...todos, ...newMigrated];
       }
@@ -72,6 +75,9 @@ export const getLifeOSData = (): LifeOSData => {
       college: parsed.college || {},
       steps: parsed.steps || {},
       weeklyReports: parsed.weeklyReports || [],
+      sleep: parsed.sleep || {},
+      discipline: parsed.discipline || {},
+      activeSleepStart: parsed.activeSleepStart || null,
     };
 
     if (migratedAny) {

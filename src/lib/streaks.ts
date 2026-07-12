@@ -60,3 +60,56 @@ export const getCollegeStreak = (data: LifeOSData) => {
 export const getStepsStreak = (data: LifeOSData) => {
   return calculateStreak((dateStr) => data.steps?.[dateStr] === true);
 };
+
+export const getDisciplineStreak = (data: LifeOSData) => {
+  return calculateStreak((dateStr) => data.discipline?.[dateStr] === 'strong');
+};
+
+export const getSleepStreak = (data: LifeOSData) => {
+  const goal = data.settings?.sleepGoal || 8;
+  return calculateStreak((dateStr) => (data.sleep?.[dateStr]?.duration || 0) >= goal);
+};
+
+export const getLongestStreak = (data: LifeOSData, checkDay: (dateStr: string) => boolean): number => {
+  const trackedDates = [
+    ...Object.keys(data.gym || {}),
+    ...Object.keys(data.prayers || {}),
+    ...Object.keys(data.journal || {}),
+    ...Object.keys(data.coding || {}),
+    ...Object.keys(data.college || {}),
+    ...Object.keys(data.steps || {}),
+    ...Object.keys(data.sleep || {}),
+    ...Object.keys(data.discipline || {}),
+    ...(data.meals || []).map(m => m.date),
+    ...(data.weightLogs || []).map(w => w.date)
+  ].sort();
+
+  if (trackedDates.length === 0) return 0;
+  
+  const earliestDateStr = trackedDates[0];
+  const start = new Date(earliestDateStr);
+  const end = new Date();
+  
+  let maxStreak = 0;
+  let currentStreak = 0;
+  
+  const loop = new Date(start);
+  while (loop <= end) {
+    const yyyy = loop.getFullYear();
+    const mm = String(loop.getMonth() + 1).padStart(2, '0');
+    const dd = String(loop.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    
+    if (checkDay(dateStr)) {
+      currentStreak++;
+      if (currentStreak > maxStreak) {
+        maxStreak = currentStreak;
+      }
+    } else {
+      currentStreak = 0;
+    }
+    loop.setDate(loop.getDate() + 1);
+  }
+  
+  return maxStreak;
+};

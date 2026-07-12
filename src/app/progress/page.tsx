@@ -3,26 +3,35 @@
 import React, { useState, useEffect } from 'react';
 import { useLifeOS } from '@/components/LifeOSProvider';
 import { getTodayString, getOffsetDateString } from '@/lib/storage';
-import { calculateDailyScore } from '@/lib/scoring';
-import { getGymStreak, getPrayerStreak, getJournalStreak, getCollegeStreak, getProteinStreak, getStepsStreak } from '@/lib/streaks';
+import { calculateDailyScore, calculateRecoveryScore } from '@/lib/scoring';
+import {
+  getGymStreak,
+  getPrayerStreak,
+  getCollegeStreak,
+  getProteinStreak,
+  getStepsStreak,
+  getDisciplineStreak,
+  getSleepStreak,
+  getLongestStreak
+} from '@/lib/streaks';
 import { attendanceConfig } from '@/lib/attendance';
-import { 
-  checkAndArchiveCompletedWeeks, 
-  calculateWeeklyStats, 
-  generateWeeklySummary, 
-  getMonday, 
-  getSunday, 
-  formatDateString 
+import {
+  checkAndArchiveCompletedWeeks,
+  calculateWeeklyStats,
+  generateWeeklySummary,
+  getMonday,
+  getSunday,
+  formatDateString
 } from '@/lib/review';
 import { WeeklyReport } from '@/lib/types';
 
 export default function ProgressPage() {
   const { data, updateData } = useLifeOS();
   const today = getTodayString();
-  
+
   // Weight Log State
   const [weightInput, setWeightInput] = useState('');
-  
+
   // Selected historical week for modal report card view
   const [selectedWeeklyReport, setSelectedWeeklyReport] = useState<WeeklyReport | null>(null);
 
@@ -47,12 +56,12 @@ export default function ProgressPage() {
   };
 
   // --- Calculations ---
-  const proteinGoal = data.settings?.proteinGoal || 120;
+  const sleepGoal = data.settings?.sleepGoal || 8;
 
   // Weight baseline & changes
   const baselineWeight = data.weightLogs.length > 0 ? data.weightLogs[0].weight : null;
   const latestWeight = data.weightLogs.length > 0 ? data.weightLogs[data.weightLogs.length - 1].weight : null;
-  
+
   let weightChangeText = 'N/A';
   let weightChangeDirection = '';
   if (data.weightLogs.length >= 2 && baselineWeight !== null && latestWeight !== null) {
@@ -78,14 +87,16 @@ export default function ProgressPage() {
 
   // Tracked Dates History
   const trackedDates = new Set([
-    ...Object.keys(data.gym),
-    ...Object.keys(data.prayers),
-    ...Object.keys(data.journal),
+    ...Object.keys(data.gym || {}),
+    ...Object.keys(data.prayers || {}),
+    ...Object.keys(data.journal || {}),
     ...Object.keys(data.coding || {}),
     ...Object.keys(data.college || {}),
     ...Object.keys(data.steps || {}),
-    ...data.meals.map(m => m.date),
-    ...data.weightLogs.map(w => w.date)
+    ...Object.keys(data.discipline || {}),
+    ...Object.keys(data.sleep || {}),
+    ...(data.meals || []).map(m => m.date),
+    ...(data.weightLogs || []).map(w => w.date)
   ]);
   const daysTracked = trackedDates.size;
 
@@ -95,7 +106,9 @@ export default function ProgressPage() {
   const collegeStreak = getCollegeStreak(data);
   const stepsStreak = getStepsStreak(data);
   const proteinStreak = getProteinStreak(data);
-  const bestStreak = Math.max(gymStreak, collegeStreak, prayerStreak, proteinStreak, stepsStreak);
+  const disciplineStreak = getDisciplineStreak(data);
+  const sleepStreak = getSleepStreak(data);
+  const bestStreak = Math.max(gymStreak, collegeStreak, prayerStreak, proteinStreak, stepsStreak, disciplineStreak, sleepStreak);
 
   // Highest score calculation
   let highestScore = 0;
@@ -111,95 +124,94 @@ export default function ProgressPage() {
   const currentSundayDate = getSunday(currentMondayDate);
   const currentSundayStr = formatDateString(currentSundayDate);
   const currentWeekReport = calculateWeeklyStats(
-    data, 
-    currentMondayStr, 
-    currentSundayStr, 
+    data,
+    currentMondayStr,
+    currentSundayStr,
     (data.weeklyReports?.length || 0) + 1
   );
 
   // --- Previous Week Stats ---
-  const previousWeekReport = data.weeklyReports && data.weeklyReports.length > 0 
-    ? data.weeklyReports[data.weeklyReports.length - 1] 
+  const previousWeekReport = data.weeklyReports && data.weeklyReports.length > 0
+    ? data.weeklyReports[data.weeklyReports.length - 1]
     : null;
 
-  // Comparison Generator
+  // Rating and Comparison calculations
+  let overallRatingSummary = '';
   const comparisons: { text: string; isPositive: boolean }[] = [];
   let biggestImprovement = '';
   let focusHabit = '';
   let weeklySummaryText = 'Complete one full week to unlock comparison insights.';
 
   if (previousWeekReport) {
-    // 1. Daily Score
+    // Overall Weekly Rating at top
     const scoreDiff = currentWeekReport.avgScore - previousWeekReport.avgScore;
-    if (scoreDiff !== 0) {
-      comparisons.push({
-        text: `Daily Score ${scoreDiff > 0 ? 'improved' : 'dropped'} by ${Math.abs(scoreDiff)}%`,
-        isPositive: scoreDiff > 0
-      });
+    if (scoreDiff > 0) {
+      overallRatingSummary = `You improved by ${scoreDiff}% compared to last week`;
+    } else if (scoreDiff < 0) {
+      overallRatingSummary = `Overall consistency dropped by ${Math.abs(scoreDiff)}% compared to last week`;
+    } else {
+      overallRatingSummary = `Overall consistency remained steady compared to last week`;
     }
 
-    // 2. Gym
-    const gymDiff = currentWeekReport.gymAttended - previousWeekReport.gymAttended;
-    if (gymDiff !== 0) {
+    // Dynamic Comparison Details
+    // Format helpers
+    const addComp = (label: string, currVal: number, prevVal: number, total: number, unit: string) => {
+      const diff = currVal - prevVal;
+      const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
       comparisons.push({
-        text: `Gym consistency ${gymDiff > 0 ? 'increased' : 'decreased'} from ${previousWeekReport.gymAttended}/7 to ${currentWeekReport.gymAttended}/7`,
-        isPositive: gymDiff > 0
+        text: `${label}: ${prevVal}/${total} → ${currVal}/${total} (${diffStr} ${unit})`,
+        isPositive: diff >= 0
       });
-    }
+    };
 
-    // 3. College
-    const collegeDiff = currentWeekReport.collegeAttended - previousWeekReport.collegeAttended;
-    if (collegeDiff !== 0) {
-      comparisons.push({
-        text: `College attendance ${collegeDiff > 0 ? 'improved' : 'dropped'} from ${previousWeekReport.collegeAttended}/7 to ${currentWeekReport.collegeAttended}/7`,
-        isPositive: collegeDiff > 0
-      });
-    }
+    // 1. Average Daily Score
+    const diffScore = currentWeekReport.avgScore - previousWeekReport.avgScore;
+    comparisons.push({
+      text: `Daily Score: ${previousWeekReport.avgScore} → ${currentWeekReport.avgScore} (${diffScore >= 0 ? '+' : ''}${diffScore})`,
+      isPositive: diffScore >= 0
+    });
 
-    // 4. 10K Steps
-    const stepsDiff = currentWeekReport.stepsAttended - previousWeekReport.stepsAttended;
-    if (stepsDiff !== 0) {
-      comparisons.push({
-        text: `10K Steps goal achieved on ${currentWeekReport.stepsAttended} days instead of ${previousWeekReport.stepsAttended}`,
-        isPositive: stepsDiff > 0
-      });
-    }
+    // 2. Average Recovery Score
+    const diffRecovery = currentWeekReport.avgRecoveryScore - previousWeekReport.avgRecoveryScore;
+    comparisons.push({
+      text: `Recovery Score: ${previousWeekReport.avgRecoveryScore} → ${currentWeekReport.avgRecoveryScore} (${diffRecovery >= 0 ? '+' : ''}${diffRecovery})`,
+      isPositive: diffRecovery >= 0
+    });
 
-    // 5. Prayers
-    const prayerDiff = currentWeekReport.prayerPct - previousWeekReport.prayerPct;
-    if (prayerDiff !== 0) {
-      comparisons.push({
-        text: `Prayer completion ${prayerDiff > 0 ? 'increased' : 'dropped'} by ${Math.abs(prayerDiff).toFixed(1)}%`,
-        isPositive: prayerDiff > 0
-      });
-    }
+    // 3. Gym
+    addComp('Gym', currentWeekReport.gymAttended, previousWeekReport.gymAttended, 7, 'days');
 
-    // 6. Protein
-    const proteinDiff = currentWeekReport.proteinAttended - previousWeekReport.proteinAttended;
-    if (proteinDiff !== 0) {
-      comparisons.push({
-        text: `Protein goal achieved on ${currentWeekReport.proteinAttended} days instead of ${previousWeekReport.proteinAttended}`,
-        isPositive: proteinDiff > 0
-      });
-    }
+    // 4. College
+    addComp('College', currentWeekReport.collegeAttended, previousWeekReport.collegeAttended, 7, 'days');
 
-    // 7. Todos
-    const todoDiff = currentWeekReport.todoPct - previousWeekReport.todoPct;
-    if (todoDiff !== 0) {
-      comparisons.push({
-        text: `Todo completion ${todoDiff > 0 ? 'improved' : 'dropped'} by ${Math.abs(todoDiff).toFixed(1)}%`,
-        isPositive: todoDiff > 0
-      });
-    }
+    // 5. Steps
+    addComp('10K Steps', currentWeekReport.stepsAttended, previousWeekReport.stepsAttended, 7, 'days');
 
-    // 8. Class Attendance
-    const classDiff = currentWeekReport.classAttendancePct - previousWeekReport.classAttendancePct;
-    if (classDiff !== 0) {
-      comparisons.push({
-        text: `Class attendance ${classDiff > 0 ? 'improved' : 'dropped'} from ${previousWeekReport.classAttendancePct.toFixed(0)}% to ${currentWeekReport.classAttendancePct.toFixed(0)}%`,
-        isPositive: classDiff > 0
-      });
-    }
+    // 6. Prayers
+    addComp('Prayers', currentWeekReport.prayersAttended, previousWeekReport.prayersAttended, 35, 'prayers');
+
+    // 7. Protein
+    addComp('Protein Goal', currentWeekReport.proteinAttended, previousWeekReport.proteinAttended, 7, 'days');
+
+    // 8. Sleep Goal
+    addComp('Sleep Goal', currentWeekReport.sleepAttended, previousWeekReport.sleepAttended, 7, 'days');
+
+    // 9. Discipline
+    addComp('Discipline', currentWeekReport.disciplineAttended, previousWeekReport.disciplineAttended, 7, 'days');
+
+    // 10. Todos
+    const todoDiff = currentWeekReport.todosAttended - previousWeekReport.todosAttended;
+    comparisons.push({
+      text: `Todo: ${previousWeekReport.todosAttended}/${previousWeekReport.todosTotal} → ${currentWeekReport.todosAttended}/${currentWeekReport.todosTotal} (${todoDiff >= 0 ? '+' : ''}${todoDiff} tasks)`,
+      isPositive: todoDiff >= 0
+    });
+
+    // 11. Class Attendance
+    const classDiff = currentWeekReport.classesAttended - previousWeekReport.classesAttended;
+    comparisons.push({
+      text: `Class Attendance: ${previousWeekReport.classesAttended}/${previousWeekReport.classesTotal} → ${currentWeekReport.classesAttended}/${currentWeekReport.classesTotal} (${classDiff >= 0 ? '+' : ''}${classDiff} classes)`,
+      isPositive: classDiff >= 0
+    });
 
     // Biggest Improvement and Focus Areas
     const habitsToCompare = [
@@ -209,7 +221,9 @@ export default function ProgressPage() {
       { name: 'Prayers', current: currentWeekReport.prayerPct, previous: previousWeekReport.prayerPct },
       { name: 'Protein', current: currentWeekReport.proteinPct, previous: previousWeekReport.proteinPct },
       { name: 'Todos', current: currentWeekReport.todoPct, previous: previousWeekReport.todoPct },
-      { name: 'Class Attendance', current: currentWeekReport.classAttendancePct, previous: previousWeekReport.classAttendancePct }
+      { name: 'Class Attendance', current: currentWeekReport.classAttendancePct, previous: previousWeekReport.classAttendancePct },
+      { name: 'Discipline', current: currentWeekReport.disciplinePct, previous: previousWeekReport.disciplinePct },
+      { name: 'Sleep', current: currentWeekReport.sleepPct, previous: previousWeekReport.sleepPct }
     ];
 
     let maxDiff = 0;
@@ -252,42 +266,107 @@ export default function ProgressPage() {
     weeklySummaryText = generateWeeklySummary(currentWeekReport, previousWeekReport);
   }
 
-  // --- Rolling 30 Days Metrics (Monthly Overview)
+  // --- Sleep analytics calculation ---
+  const allSleeps = Object.values(data.sleep || {});
+  const weeklySleeps = Object.entries(data.sleep || {}).filter(([date]) => new Date(date) >= currentMondayDate);
+  const sleepWeeklyAvg = weeklySleeps.length > 0
+    ? weeklySleeps.reduce((acc, [, val]) => acc + (val.duration || 0), 0) / 7
+    : 0;
+
+  const thisMonthMonday = new Date();
+  thisMonthMonday.setDate(1);
+  thisMonthMonday.setHours(0,0,0,0);
+  const monthlySleeps = Object.entries(data.sleep || {}).filter(([date]) => new Date(date) >= thisMonthMonday);
+  const sleepMonthlyAvg = monthlySleeps.length > 0
+    ? monthlySleeps.reduce((acc, [, val]) => acc + (val.duration || 0), 0) / monthlySleeps.length
+    : 0;
+
+  const completedSleeps = allSleeps.filter(s => (s.duration || 0) >= sleepGoal).length;
+  const sleepCompletionPct = allSleeps.length > 0 ? (completedSleeps / allSleeps.length) * 100 : 0;
+
+  const getBedtimeMinutes = (isoString: string) => {
+    const d = new Date(isoString);
+    const h = d.getHours();
+    const m = d.getMinutes();
+    const total = h * 60 + m;
+    return h < 12 ? total + 1440 : total;
+  };
+
+  const formatAvgTime = (avgMins: number) => {
+    const mins = Math.round(avgMins) % 1440;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    const period = h >= 12 ? 'PM' : 'AM';
+    const displayHour = h % 12 === 0 ? 12 : h % 12;
+    return `${displayHour}:${String(m).padStart(2, '0')} ${period}`;
+  };
+
+  const sleepsWithBedTime = allSleeps.filter(s => s.bedTime);
+  const avgBedtimeMins = sleepsWithBedTime.length > 0
+    ? sleepsWithBedTime.reduce((sum, s) => sum + getBedtimeMinutes(s.bedTime!), 0) / sleepsWithBedTime.length
+    : null;
+  const avgBedtimeStr = avgBedtimeMins !== null ? formatAvgTime(avgBedtimeMins) : 'N/A';
+
+  const sleepsWithWakeTime = allSleeps.filter(s => s.wakeTime);
+  const avgWakeTimeMins = sleepsWithWakeTime.length > 0
+    ? sleepsWithWakeTime.reduce((sum, s) => {
+        const d = new Date(s.wakeTime!);
+        return sum + (d.getHours() * 60 + d.getMinutes());
+      }, 0) / sleepsWithWakeTime.length
+    : null;
+  const avgWakeTimeStr = avgWakeTimeMins !== null ? formatAvgTime(avgWakeTimeMins) : 'N/A';
+
+  const sleepLongestStreak = getLongestStreak(data, (dateStr) => {
+    const s = data.sleep?.[dateStr];
+    return s !== undefined && (s.duration || 0) >= sleepGoal;
+  });
+
+  // --- Discipline analytics calculation ---
+  const disciplineLogs = Object.values(data.discipline || {});
+  const strongDaysCount = disciplineLogs.filter(v => v === 'strong').length;
+  const disciplineSuccessPct = disciplineLogs.length > 0 ? (strongDaysCount / disciplineLogs.length) * 100 : 0;
+  const disciplineLongestStreak = getLongestStreak(data, dateStr => data.discipline?.[dateStr] === 'strong');
+
+  const strongDaysThisWeek = Object.entries(data.discipline || {})
+    .filter(([date, status]) => new Date(date) >= currentMondayDate && status === 'strong').length;
+
+  const strongDaysThisMonth = Object.entries(data.discipline || {})
+    .filter(([date, status]) => new Date(date) >= thisMonthMonday && status === 'strong').length;
+
+  const discDiff = previousWeekReport
+    ? currentWeekReport.disciplineAttended - previousWeekReport.disciplineAttended
+    : 0;
+  const disciplineInsight = previousWeekReport
+    ? discDiff > 0
+      ? `🔥 Discipline improved by ${discDiff} days.`
+      : discDiff < 0
+        ? `⚠️ Discipline declined by ${Math.abs(discDiff)} days.`
+        : 'Discipline level remained steady.'
+    : 'No comparison insights available yet.';
+
+  // --- Recovery Score calculations ---
   const last30Days = Array.from({ length: 30 }, (_, i) => getOffsetDateString(-i));
-  const activeDaysLast30 = last30Days.filter(d => trackedDates.has(d)).length;
-  const gymDaysLast30 = last30Days.filter(d => data.gym[d] === true).length;
-  const collegeDaysLast30 = last30Days.filter(d => data.college?.[d] === true).length;
-  const stepsDaysLast30 = last30Days.filter(d => data.steps?.[d] === true).length;
   
-  let proteinGoalMetLast30 = 0;
-  let last30ScoresSum = 0;
-
+  let recovery30Sum = 0;
   last30Days.forEach(d => {
-    const dayMeals = data.meals.filter(m => m.date === d);
-    const dayProtein = dayMeals.reduce((acc, m) => acc + (m.protein || 0), 0);
-    if (dayProtein >= proteinGoal && dayMeals.length > 0) {
-      proteinGoalMetLast30++;
+    recovery30Sum += calculateRecoveryScore(data, d);
+  });
+  const avgRecoveryLast30 = Math.round(recovery30Sum / 30);
+
+  let bestRecoveryDay = { date: 'N/A', score: 0 };
+  trackedDates.forEach(date => {
+    const s = calculateRecoveryScore(data, date);
+    if (s > bestRecoveryDay.score) {
+      bestRecoveryDay = { date, score: s };
     }
-    last30ScoresSum += calculateDailyScore(data, d);
   });
-  const avgScoreLast30 = Math.round(last30ScoresSum / 30);
+  const bestRecoveryDayStr = bestRecoveryDay.score > 0
+    ? `${bestRecoveryDay.score}/100 on ${new Date(bestRecoveryDay.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    : 'N/A';
 
-  // Global Totals (Progress Cards)
-  const totalGymDays = Object.values(data.gym).filter(Boolean).length;
-  const totalCollegeDays = Object.values(data.college || {}).filter(Boolean).length;
-  const totalStepsDays = Object.values(data.steps || {}).filter(Boolean).length;
-  
-  let totalPrayersDone = 0;
-  Object.values(data.prayers).forEach(p => {
-    totalPrayersDone += Object.values(p).filter(v => v === 'done').length;
-  });
-
-  const proteinByDate: Record<string, number> = {};
-  data.meals.forEach(m => {
-    proteinByDate[m.date] = (proteinByDate[m.date] || 0) + (m.protein || 0);
-  });
-  const totalProteinDaysAchieved = Object.values(proteinByDate).filter(p => p >= proteinGoal).length;
-  const totalTodosCompleted = data.todos.filter(t => t.done).length;
+  const recoveryTrend = previousWeekReport
+    ? `${currentWeekReport.avgRecoveryScore - previousWeekReport.avgRecoveryScore >= 0 ? '⬆' : '⬇'} ${currentWeekReport.avgRecoveryScore}% (last week ${previousWeekReport.avgRecoveryScore}%, diff: ${currentWeekReport.avgRecoveryScore - previousWeekReport.avgRecoveryScore >= 0 ? '+' : ''}${currentWeekReport.avgRecoveryScore - previousWeekReport.avgRecoveryScore})`
+    : 'N/A';
 
   const attendance = data.attendance || {};
 
@@ -333,11 +412,20 @@ export default function ProgressPage() {
         <h1 className="text-2xl font-bold text-white tracking-tight">Progress Hub</h1>
       </header>
 
+      {/* OVERALL WEEKLY RATING SUMMARY */}
+      {overallRatingSummary && (
+        <section className="mb-6 bg-gradient-to-r from-indigo-900/60 to-purple-900/60 border border-indigo-500/20 rounded-2xl p-4 shadow-md text-center">
+          <p className="text-sm font-black text-indigo-200">
+            {overallRatingSummary}
+          </p>
+        </section>
+      )}
+
       {/* Weekly Report Card (Current Week) */}
       <section className="mb-6 bg-zinc-900 border border-zinc-800 rounded-2xl p-5 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-6 -mt-6" />
         <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">This Week&apos;s Report</h3>
-        
+
         {/* Weekly Grade & Average */}
         <div className="flex items-center justify-between mb-6 pb-6 border-b border-zinc-800 relative">
           <div className="flex items-center gap-4">
@@ -354,20 +442,20 @@ export default function ProgressPage() {
             </div>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Record Score</p>
-            <p className="text-lg font-black text-zinc-300 mt-1">{highestScore}</p>
+            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Average Recovery</p>
+            <p className="text-lg font-black text-zinc-300 mt-1">{currentWeekReport.avgRecoveryScore}</p>
           </div>
         </div>
 
-        {/* Prioritized Progress Indicators (with values) */}
+        {/* Prioritized Progress Indicators */}
         <div className="space-y-4 relative">
           {/* Gym */}
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
               <span className="text-zinc-300">🏋️ Gym Completion</span>
-              <span className="text-zinc-400">{currentWeekReport.gymAttended}/{currentWeekReport.gymTotal} • <span className="text-blue-400">{currentWeekReport.gymPct.toFixed(1)}%</span></span>
+              <span className="text-zinc-400">{currentWeekReport.gymAttended}/{currentWeekReport.gymTotal} • <span className="text-blue-400">{currentWeekReport.gymPct.toFixed(0)}%</span></span>
             </div>
-            <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-850">
+            <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
               <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${currentWeekReport.gymPct}%` }} />
             </div>
           </div>
@@ -376,9 +464,9 @@ export default function ProgressPage() {
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
               <span className="text-zinc-300">🎓 College Attendance</span>
-              <span className="text-zinc-400">{currentWeekReport.collegeAttended}/{currentWeekReport.collegeTotal} • <span className="text-blue-400">{currentWeekReport.collegePct.toFixed(1)}%</span></span>
+              <span className="text-zinc-400">{currentWeekReport.collegeAttended}/{currentWeekReport.collegeTotal} • <span className="text-blue-400">{currentWeekReport.collegePct.toFixed(0)}%</span></span>
             </div>
-            <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-850">
+            <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
               <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${currentWeekReport.collegePct}%` }} />
             </div>
           </div>
@@ -387,9 +475,9 @@ export default function ProgressPage() {
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
               <span className="text-zinc-300">👣 10K Steps Tracker</span>
-              <span className="text-zinc-400">{currentWeekReport.stepsAttended}/{currentWeekReport.stepsTotal} • <span className="text-blue-400">{currentWeekReport.stepsPct.toFixed(1)}%</span></span>
+              <span className="text-zinc-400">{currentWeekReport.stepsAttended}/{currentWeekReport.stepsTotal} • <span className="text-blue-400">{currentWeekReport.stepsPct.toFixed(0)}%</span></span>
             </div>
-            <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-850">
+            <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
               <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{ width: `${currentWeekReport.stepsPct}%` }} />
             </div>
           </div>
@@ -398,9 +486,9 @@ export default function ProgressPage() {
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
               <span className="text-zinc-300">🕌 Prayer Completion</span>
-              <span className="text-zinc-400">{currentWeekReport.prayersAttended}/{currentWeekReport.prayersTotal} • <span className="text-blue-400">{currentWeekReport.prayerPct.toFixed(1)}%</span></span>
+              <span className="text-zinc-400">{currentWeekReport.prayersAttended}/{currentWeekReport.prayersTotal} • <span className="text-blue-400">{currentWeekReport.prayerPct.toFixed(0)}%</span></span>
             </div>
-            <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-850">
+            <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
               <div className="h-full bg-purple-500 rounded-full transition-all duration-500" style={{ width: `${currentWeekReport.prayerPct}%` }} />
             </div>
           </div>
@@ -409,20 +497,42 @@ export default function ProgressPage() {
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
               <span className="text-zinc-300">🍗 Protein Goal Achieved</span>
-              <span className="text-zinc-400">{currentWeekReport.proteinAttended}/{currentWeekReport.proteinTotal} • <span className="text-blue-400">{currentWeekReport.proteinPct.toFixed(1)}%</span></span>
+              <span className="text-zinc-400">{currentWeekReport.proteinAttended}/{currentWeekReport.proteinTotal} • <span className="text-blue-400">{currentWeekReport.proteinPct.toFixed(0)}%</span></span>
             </div>
-            <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-850">
+            <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
               <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${currentWeekReport.proteinPct}%` }} />
             </div>
           </div>
 
-          {/* Timetable Attendance */}
+          {/* Sleep */}
+          <div>
+            <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+              <span className="text-zinc-300">🌙 Sleep Goal Achieved</span>
+              <span className="text-zinc-400">{currentWeekReport.sleepAttended}/{currentWeekReport.sleepTotal} • <span className="text-blue-400">{currentWeekReport.sleepPct.toFixed(0)}%</span></span>
+            </div>
+            <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
+              <div className="h-full bg-teal-500 rounded-full transition-all duration-500" style={{ width: `${currentWeekReport.sleepPct}%` }} />
+            </div>
+          </div>
+
+          {/* Discipline */}
+          <div>
+            <div className="flex justify-between items-center text-xs font-bold mb-1.5">
+              <span className="text-zinc-300">✅ Discipline Tracker</span>
+              <span className="text-zinc-400">{currentWeekReport.disciplineAttended}/{currentWeekReport.disciplineTotal} • <span className="text-blue-400">{currentWeekReport.disciplinePct.toFixed(0)}%</span></span>
+            </div>
+            <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
+              <div className="h-full bg-yellow-500 rounded-full transition-all duration-500" style={{ width: `${currentWeekReport.disciplinePct}%` }} />
+            </div>
+          </div>
+
+          {/* Class Attendance */}
           <div>
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
               <span className="text-zinc-300">📅 Academic Attendance</span>
-              <span className="text-zinc-400">{currentWeekReport.classesAttended}/{currentWeekReport.classesTotal} • <span className="text-blue-400">{currentWeekReport.classAttendancePct.toFixed(1)}%</span></span>
+              <span className="text-zinc-400">{currentWeekReport.classesAttended}/{currentWeekReport.classesTotal} • <span className="text-blue-400">{currentWeekReport.classAttendancePct.toFixed(0)}%</span></span>
             </div>
-            <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-zinc-850">
+            <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
               <div className="h-full bg-cyan-500 rounded-full transition-all duration-500" style={{ width: `${currentWeekReport.classAttendancePct}%` }} />
             </div>
           </div>
@@ -432,7 +542,7 @@ export default function ProgressPage() {
         <div className="mt-6 pt-6 border-t border-zinc-800 relative">
           <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Todo Completion</p>
           <p className="text-xs font-bold text-white mt-1">
-            {currentWeekReport.todosAttended}/{currentWeekReport.todosTotal} completed • <span className="text-blue-400">{currentWeekReport.todoPct.toFixed(1)}%</span>
+            {currentWeekReport.todosAttended}/{currentWeekReport.todosTotal} completed • <span className="text-blue-400">{currentWeekReport.todoPct.toFixed(0)}%</span>
           </p>
         </div>
       </section>
@@ -441,12 +551,12 @@ export default function ProgressPage() {
       <section className="mb-6">
         <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Weekly Review</h3>
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-4">
-          
+
           {/* Highlight metrics (Improvement and Focus) */}
           {previousWeekReport && (
             <div className="grid grid-cols-2 gap-3 pb-4 border-b border-zinc-800">
               <div className="bg-zinc-950/45 border border-zinc-850 rounded-xl p-3">
-                <span className="text-[10px] text-zinc-500 font-bold uppercase block tracking-wider">🔥 Biggest Improvement</span>
+                <span className="text-[10px] text-zinc-500 font-bold uppercase block tracking-wider">🏆 Biggest Improvement</span>
                 <p className="text-sm font-black text-green-400 mt-1">{biggestImprovement || 'None'}</p>
               </div>
               <div className="bg-zinc-950/45 border border-zinc-850 rounded-xl p-3">
@@ -460,17 +570,14 @@ export default function ProgressPage() {
           <div>
             <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block mb-2.5">Weekly Changes</span>
             {previousWeekReport ? (
-              <ul className="space-y-2">
+              <ul className="space-y-2.5">
                 {comparisons.map((c, idx) => (
-                  <li key={idx} className="text-xs font-medium flex items-center gap-2">
-                    <span className={c.isPositive ? 'text-green-500' : 'text-red-500 font-black'}>
+                  <li key={idx} className="text-xs font-medium flex items-center justify-between">
+                    <span className={c.isPositive ? 'text-green-400' : 'text-red-400'}>
                       {c.text}
                     </span>
                   </li>
                 ))}
-                {comparisons.length === 0 && (
-                  <p className="text-xs text-zinc-500 italic">No significant changes from last week.</p>
-                )}
               </ul>
             ) : (
               <p className="text-xs text-zinc-500 italic">Complete one full week to unlock comparison insights.</p>
@@ -487,6 +594,97 @@ export default function ProgressPage() {
         </div>
       </section>
 
+      {/* THREE NEW ANALYTICS CARDS (Recovery, Sleep, Discipline) */}
+      <section className="mb-6 space-y-4">
+        {/* Recovery Analytics */}
+        <div>
+          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Recovery Score Analytics</h3>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Weekly Average</span>
+                <p className="text-xl font-black text-white mt-0.5">{currentWeekReport.avgRecoveryScore}/100</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Monthly Average</span>
+                <p className="text-xl font-black text-white mt-0.5">{avgRecoveryLast30}/100</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Best Recovery Day</span>
+                <p className="text-xs font-bold text-white mt-1 leading-snug">{bestRecoveryDayStr}</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Recovery Trend</span>
+                <p className="text-xs font-bold text-indigo-400 mt-1 leading-snug">{recoveryTrend}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sleep Analytics */}
+        <div>
+          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Sleep Analytics</h3>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Weekly Average</span>
+                <p className="text-xl font-black text-white mt-0.5">{sleepWeeklyAvg.toFixed(1)} hrs</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Monthly Average</span>
+                <p className="text-xl font-black text-white mt-0.5">{sleepMonthlyAvg.toFixed(1)} hrs</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Sleep Streak</span>
+                <p className="text-base font-black text-white mt-0.5">🔥 {sleepStreak}d (Best {sleepLongestStreak}d)</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Completion Pct</span>
+                <p className="text-xl font-black text-indigo-400 mt-0.5">{sleepCompletionPct.toFixed(0)}%</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Avg Bedtime</span>
+                <p className="text-xs font-bold text-zinc-300 mt-1">{avgBedtimeStr}</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Avg Wake Time</span>
+                <p className="text-xs font-bold text-zinc-300 mt-1">{avgWakeTimeStr}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Discipline Analytics */}
+        <div>
+          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Discipline Analytics</h3>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Current Streak</span>
+                <p className="text-xl font-black text-white mt-0.5">🔥 {disciplineStreak} days</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Longest Streak</span>
+                <p className="text-xl font-black text-white mt-0.5">🏆 {disciplineLongestStreak} days</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Success %</span>
+                <p className="text-xl font-black text-indigo-400 mt-0.5">{disciplineSuccessPct.toFixed(0)}%</p>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Strong Days</span>
+                <p className="text-xs font-bold text-zinc-300 mt-1">
+                  Wk: {strongDaysThisWeek}d • Mo: {strongDaysThisMonth}d
+                </p>
+              </div>
+              <div className="col-span-2 bg-indigo-950/40 p-3 rounded-xl border border-indigo-500/20 text-center">
+                <p className="text-xs font-extrabold text-indigo-300">{disciplineInsight}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Subject Attendance Summary (sorted by lowest % first) */}
       <section className="mb-6">
         <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Subject Attendance Summary</h3>
@@ -496,7 +694,7 @@ export default function ProgressPage() {
               <div className="flex justify-between items-center text-xs font-bold mb-1.5">
                 <span className="text-zinc-300">{sub.name}</span>
                 <span className="text-zinc-400">
-                  {sub.attended}/{sub.total} • <span className={sub.percentage >= 75 ? "text-emerald-400" : "text-amber-500"}>{sub.percentage.toFixed(1)}%</span>
+                  {sub.attended}/{sub.total} • <span className={sub.percentage >= 75 ? "text-emerald-400" : "text-amber-500"}>{sub.percentage.toFixed(0)}%</span>
                 </span>
               </div>
               <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
@@ -532,7 +730,7 @@ export default function ProgressPage() {
                 )}
               </p>
             </div>
-            
+
             {/* Streaks row */}
             <div className="col-span-2 grid grid-cols-4 gap-2 py-2 border-y border-zinc-800/50 my-1">
               <div className="text-center">
@@ -558,8 +756,12 @@ export default function ProgressPage() {
               <p className="text-lg font-black text-blue-400 mt-0.5">{highestScore}</p>
             </div>
             <div className="bg-zinc-950/45 p-3 rounded-xl border border-zinc-850">
+              <p className="text-[10px] text-zinc-500 uppercase font-bold">Best Habit Streak</p>
+              <p className="text-lg font-black text-white mt-0.5">{bestStreak} days</p>
+            </div>
+            <div className="bg-zinc-950/45 p-3 rounded-xl border border-zinc-850 col-span-2 text-center">
               <p className="text-[10px] text-zinc-500 uppercase font-bold">Days Using Life OS</p>
-              <p className="text-lg font-black text-white mt-0.5">{daysTracked} days</p>
+              <p className="text-sm font-black text-white mt-0.5">{daysTracked} days</p>
             </div>
           </div>
         </div>
@@ -571,8 +773,8 @@ export default function ProgressPage() {
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-sm divide-y divide-zinc-800">
           {(data.weeklyReports || []).length > 0 ? (
             [...(data.weeklyReports || [])].reverse().map((report) => (
-              <div 
-                key={report.startDate} 
+              <div
+                key={report.startDate}
                 onClick={() => setSelectedWeeklyReport(report)}
                 className="px-5 py-4 flex items-center justify-between hover:bg-zinc-850/50 cursor-pointer transition-colors select-none"
               >
@@ -598,78 +800,6 @@ export default function ProgressPage() {
               No completed weeks archived yet.
             </p>
           )}
-        </div>
-      </section>
-
-      {/* Progress Cards */}
-      <section className="mb-6">
-        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Overall Statistics</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
-            <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">🔥 Best Streak</span>
-            <p className="text-xl font-black text-white mt-1">{bestStreak} days</p>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
-            <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">📅 Days Tracked</span>
-            <p className="text-xl font-black text-white mt-1">{daysTracked} days</p>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
-            <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">🏋️ Gym Days</span>
-            <p className="text-xl font-black text-white mt-1">{totalGymDays} days</p>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
-            <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">🎓 College Days</span>
-            <p className="text-xl font-black text-white mt-1">{totalCollegeDays} days</p>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
-            <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">👣 Steps Goal Achieved</span>
-            <p className="text-xl font-black text-white mt-1">{totalStepsDays} days</p>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
-            <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">🕌 Prayers Done</span>
-            <p className="text-xl font-black text-white mt-1">{totalPrayersDone}</p>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
-            <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">🍗 Protein Met</span>
-            <p className="text-xl font-black text-white mt-1">{totalProteinDaysAchieved} days</p>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between shadow-sm">
-            <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">✅ Todos Completed</span>
-            <p className="text-xl font-black text-white mt-1">{totalTodosCompleted}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Monthly Overview (Rolling 30 Days) */}
-      <section className="mb-6">
-        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Monthly Overview (Past 30 Days)</h3>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-[10px] text-zinc-500 uppercase font-bold">Days Active</p>
-              <p className="text-base font-black text-white mt-0.5">{activeDaysLast30}/30 • <span className="text-blue-400">{((activeDaysLast30 / 30) * 100).toFixed(1)}%</span></p>
-            </div>
-            <div>
-              <p className="text-[10px] text-zinc-500 uppercase font-bold">Avg Score</p>
-              <p className="text-base font-black text-blue-400 mt-0.5">{avgScoreLast30}/100</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-zinc-500 uppercase font-bold">Gym Completed</p>
-              <p className="text-sm font-bold text-white mt-0.5">{gymDaysLast30}/30 • <span className="text-blue-400">{((gymDaysLast30 / 30) * 100).toFixed(1)}%</span></p>
-            </div>
-            <div>
-              <p className="text-[10px] text-zinc-500 uppercase font-bold">College Attended</p>
-              <p className="text-sm font-bold text-white mt-0.5">{collegeDaysLast30}/30 • <span className="text-blue-400">{((collegeDaysLast30 / 30) * 100).toFixed(1)}%</span></p>
-            </div>
-            <div>
-              <p className="text-[10px] text-zinc-500 uppercase font-bold">Steps Goal Achieved</p>
-              <p className="text-sm font-bold text-white mt-0.5">{stepsDaysLast30}/30 • <span className="text-blue-400">{((stepsDaysLast30 / 30) * 100).toFixed(1)}%</span></p>
-            </div>
-            <div>
-              <p className="text-[10px] text-zinc-500 uppercase font-bold">Protein Goals Met</p>
-              <p className="text-sm font-bold text-white mt-0.5">{proteinGoalMetLast30}/30 • <span className="text-blue-400">{((proteinGoalMetLast30 / 30) * 100).toFixed(1)}%</span></p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -734,7 +864,7 @@ export default function ProgressPage() {
                   {formatDateRange(selectedWeeklyReport.startDate, selectedWeeklyReport.endDate)}
                 </p>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedWeeklyReport(null)}
                 className="text-zinc-500 hover:text-white font-bold text-sm bg-zinc-950 border border-zinc-800 rounded-lg w-8 h-8 flex items-center justify-center transition-colors"
               >
@@ -748,21 +878,25 @@ export default function ProgressPage() {
                 <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">Grade</span>
                 <span className="text-2xl font-black text-blue-400 leading-none mt-1">{selectedWeeklyReport.grade}</span>
               </div>
-              <div>
+              <div className="flex-1">
                 <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Average Daily Score</span>
                 <div className="flex items-baseline gap-1 mt-0.5">
                   <span className="text-2xl font-black text-white">{selectedWeeklyReport.avgScore}</span>
                   <span className="text-zinc-500 text-xs">/100</span>
                 </div>
               </div>
+              <div className="text-right shrink-0">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block">Avg Recovery</span>
+                <span className="text-xl font-black text-zinc-300">{selectedWeeklyReport.avgRecoveryScore}</span>
+              </div>
             </div>
 
-            {/* Habits stats list (with values) */}
+            {/* Habits stats list */}
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between items-center text-xs font-bold mb-1">
                   <span className="text-zinc-400">Gym Completion</span>
-                  <span className="text-zinc-300">{selectedWeeklyReport.gymAttended}/{selectedWeeklyReport.gymTotal} • <span className="text-blue-400">{selectedWeeklyReport.gymPct.toFixed(1)}%</span></span>
+                  <span className="text-zinc-300">{selectedWeeklyReport.gymAttended}/{selectedWeeklyReport.gymTotal} • <span className="text-blue-400">{selectedWeeklyReport.gymPct.toFixed(0)}%</span></span>
                 </div>
                 <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
                   <div className="h-full bg-emerald-500" style={{ width: `${selectedWeeklyReport.gymPct}%` }} />
@@ -772,7 +906,7 @@ export default function ProgressPage() {
               <div>
                 <div className="flex justify-between items-center text-xs font-bold mb-1">
                   <span className="text-zinc-400">College Attendance</span>
-                  <span className="text-zinc-300">{selectedWeeklyReport.collegeAttended}/{selectedWeeklyReport.collegeTotal} • <span className="text-blue-400">{selectedWeeklyReport.collegePct.toFixed(1)}%</span></span>
+                  <span className="text-zinc-300">{selectedWeeklyReport.collegeAttended}/{selectedWeeklyReport.collegeTotal} • <span className="text-blue-400">{selectedWeeklyReport.collegePct.toFixed(0)}%</span></span>
                 </div>
                 <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
                   <div className="h-full bg-blue-500" style={{ width: `${selectedWeeklyReport.collegePct}%` }} />
@@ -782,7 +916,7 @@ export default function ProgressPage() {
               <div>
                 <div className="flex justify-between items-center text-xs font-bold mb-1">
                   <span className="text-zinc-400">10K Steps Goal</span>
-                  <span className="text-zinc-300">{selectedWeeklyReport.stepsAttended}/{selectedWeeklyReport.stepsTotal} • <span className="text-blue-400">{selectedWeeklyReport.stepsPct.toFixed(1)}%</span></span>
+                  <span className="text-zinc-300">{selectedWeeklyReport.stepsAttended}/{selectedWeeklyReport.stepsTotal} • <span className="text-blue-400">{selectedWeeklyReport.stepsPct.toFixed(0)}%</span></span>
                 </div>
                 <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
                   <div className="h-full bg-green-500" style={{ width: `${selectedWeeklyReport.stepsPct}%` }} />
@@ -792,7 +926,7 @@ export default function ProgressPage() {
               <div>
                 <div className="flex justify-between items-center text-xs font-bold mb-1">
                   <span className="text-zinc-400">Prayer Completion</span>
-                  <span className="text-zinc-300">{selectedWeeklyReport.prayersAttended}/{selectedWeeklyReport.prayersTotal} • <span className="text-blue-400">{selectedWeeklyReport.prayerPct.toFixed(1)}%</span></span>
+                  <span className="text-zinc-300">{selectedWeeklyReport.prayersAttended}/{selectedWeeklyReport.prayersTotal} • <span className="text-blue-400">{selectedWeeklyReport.prayerPct.toFixed(0)}%</span></span>
                 </div>
                 <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
                   <div className="h-full bg-purple-500" style={{ width: `${selectedWeeklyReport.prayerPct}%` }} />
@@ -801,8 +935,8 @@ export default function ProgressPage() {
 
               <div>
                 <div className="flex justify-between items-center text-xs font-bold mb-1">
-                  <span className="text-zinc-400">Protein Goal achieved</span>
-                  <span className="text-zinc-300">{selectedWeeklyReport.proteinAttended}/{selectedWeeklyReport.proteinTotal} • <span className="text-blue-400">{selectedWeeklyReport.proteinPct.toFixed(1)}%</span></span>
+                  <span className="text-zinc-400">Protein Goal Achieved</span>
+                  <span className="text-zinc-300">{selectedWeeklyReport.proteinAttended}/{selectedWeeklyReport.proteinTotal} • <span className="text-blue-400">{selectedWeeklyReport.proteinPct.toFixed(0)}%</span></span>
                 </div>
                 <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
                   <div className="h-full bg-indigo-500" style={{ width: `${selectedWeeklyReport.proteinPct}%` }} />
@@ -811,8 +945,28 @@ export default function ProgressPage() {
 
               <div>
                 <div className="flex justify-between items-center text-xs font-bold mb-1">
+                  <span className="text-zinc-400">Sleep Goal Achieved</span>
+                  <span className="text-zinc-300">{selectedWeeklyReport.sleepAttended}/{selectedWeeklyReport.sleepTotal} • <span className="text-blue-400">{selectedWeeklyReport.sleepPct.toFixed(0)}%</span></span>
+                </div>
+                <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
+                  <div className="h-full bg-teal-500" style={{ width: `${selectedWeeklyReport.sleepPct}%` }} />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center text-xs font-bold mb-1">
+                  <span className="text-zinc-400">Discipline Days</span>
+                  <span className="text-zinc-300">{selectedWeeklyReport.disciplineAttended}/{selectedWeeklyReport.disciplineTotal} • <span className="text-blue-400">{selectedWeeklyReport.disciplinePct.toFixed(0)}%</span></span>
+                </div>
+                <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
+                  <div className="h-full bg-yellow-500" style={{ width: `${selectedWeeklyReport.disciplinePct}%` }} />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center text-xs font-bold mb-1">
                   <span className="text-zinc-400">Academic Class Attendance</span>
-                  <span className="text-zinc-300">{selectedWeeklyReport.classesAttended}/{selectedWeeklyReport.classesTotal} • <span className="text-blue-400">{selectedWeeklyReport.classAttendancePct.toFixed(1)}%</span></span>
+                  <span className="text-zinc-300">{selectedWeeklyReport.classesAttended}/{selectedWeeklyReport.classesTotal} • <span className="text-blue-400">{selectedWeeklyReport.classAttendancePct.toFixed(0)}%</span></span>
                 </div>
                 <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
                   <div className="h-full bg-cyan-500" style={{ width: `${selectedWeeklyReport.classAttendancePct}%` }} />
@@ -823,12 +977,12 @@ export default function ProgressPage() {
             <div className="mt-5 pt-5 border-t border-zinc-850">
               <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider block mb-1">Todo Completion</span>
               <p className="text-xs font-bold text-white">
-                {selectedWeeklyReport.todosAttended}/{selectedWeeklyReport.todosTotal} completed • <span className="text-blue-400">{selectedWeeklyReport.todoPct.toFixed(1)}%</span>
+                {selectedWeeklyReport.todosAttended}/{selectedWeeklyReport.todosTotal} completed • <span className="text-blue-400">{selectedWeeklyReport.todoPct.toFixed(0)}%</span>
               </p>
             </div>
 
             <div className="mt-4 pt-4 border-t border-zinc-850">
-              <button 
+              <button
                 onClick={() => setSelectedWeeklyReport(null)}
                 className="w-full py-2.5 bg-zinc-950 hover:bg-zinc-850 text-xs font-bold uppercase tracking-wider rounded-xl transition-all border border-zinc-800"
               >

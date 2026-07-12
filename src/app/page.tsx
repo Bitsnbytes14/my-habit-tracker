@@ -4,61 +4,110 @@ import React from 'react';
 import Link from 'next/link';
 import { useLifeOS } from '@/components/LifeOSProvider';
 import { getTodayString } from '@/lib/storage';
-import { calculateDailyScore } from '@/lib/scoring';
-import { getGymStreak, getPrayerStreak, getProteinStreak } from '@/lib/streaks';
+import { calculateDailyScore, calculateRecoveryScore, getRecoveryStatus } from '@/lib/scoring';
+import {
+  getGymStreak,
+  getPrayerStreak,
+  getProteinStreak,
+  getDisciplineStreak,
+  getSleepStreak,
+  getCollegeStreak,
+  getStepsStreak,
+} from '@/lib/streaks';
 
 export default function Dashboard() {
-  const { data, updateData, openQuickAdd, showFeedback } = useLifeOS();
+  const { data, updateData, showFeedback } = useLifeOS();
   const today = getTodayString();
 
-  // Score Calculation
+  // Score Calculations
   const score = calculateDailyScore(data, today);
+  const recoveryScore = calculateRecoveryScore(data, today);
+  const recoveryStatus = getRecoveryStatus(recoveryScore);
 
-  // Stats formatting
+  // Namaz
   const prayers = data.prayers[today] || {};
-  const prayersDone = Object.values(prayers).filter(v => v === 'done').length;
+  const prayersDone = Object.values(prayers).filter((v) => v === 'done').length;
 
-  const activeTodos = data.todos ? data.todos.filter(t => !t.archived) : [];
-  const tasksDone = activeTodos.filter(t => t.done).length;
+  // Todos
+  const activeTodos = data.todos ? data.todos.filter((t) => !t.archived) : [];
+  const tasksDone = activeTodos.filter((t) => t.done).length;
 
-  const mealsToday = data.meals.filter(m => m.date === today);
+  // Protein / Calories
+  const mealsToday = data.meals.filter((m) => m.date === today);
   const proteinGoal = data.settings?.proteinGoal || 120;
-  const calorieGoal = 2000;
   const totalProtein = mealsToday.reduce((sum, m) => sum + (m.protein || 0), 0);
   const totalCalories = mealsToday.reduce((sum, m) => sum + (m.calories || 0), 0);
 
+  // States
   const gymDone = data.gym[today] === true;
   const collegeDone = data.college?.[today] === true;
   const stepsDone = data.steps?.[today] === true;
+  const disciplineStatus = data.discipline?.[today] || 'reset';
+  const sleepLog = data.sleep?.[today];
 
   const latestWeight = data.weightLogs.length > 0 ? data.weightLogs[data.weightLogs.length - 1].weight : null;
 
+  // Streaks
   const gymStreak = getGymStreak(data);
   const prayerStreak = getPrayerStreak(data);
+  const collegeStreak = getCollegeStreak(data);
+  const stepsStreak = getStepsStreak(data);
+  const disciplineStreak = getDisciplineStreak(data);
+  const sleepStreak = getSleepStreak(data);
   const proteinStreak = getProteinStreak(data);
 
+  // Toggle Handlers
   const toggleGym = () => {
     const wasDone = data.gym[today] === true;
-    updateData(prev => ({
-      gym: { ...prev.gym, [today]: !prev.gym[today] }
+    updateData((prev) => ({
+      gym: { ...prev.gym, [today]: !prev.gym[today] },
     }));
     showFeedback(wasDone ? 'Gym marked undone' : 'Gym marked done ✓', 'success');
   };
 
   const toggleCollege = () => {
     const wasDone = data.college?.[today] === true;
-    updateData(prev => ({
-      college: { ...prev.college, [today]: !prev.college?.[today] }
+    updateData((prev) => ({
+      college: { ...prev.college, [today]: !prev.college?.[today] },
     }));
     showFeedback(wasDone ? 'College marked as missed' : 'College marked as attended ✓', 'success');
   };
 
   const toggleSteps = () => {
     const wasDone = data.steps?.[today] === true;
-    updateData(prev => ({
-      steps: { ...prev.steps, [today]: !prev.steps?.[today] }
+    updateData((prev) => ({
+      steps: { ...prev.steps, [today]: !prev.steps?.[today] },
     }));
     showFeedback(wasDone ? 'Steps marked incomplete' : '10K Steps completed ✓', 'success');
+  };
+
+  const toggleDiscipline = () => {
+    const nextStatus = disciplineStatus === 'strong' ? 'reset' : 'strong';
+    updateData((prev) => ({
+      discipline: {
+        ...(prev.discipline || {}),
+        [today]: nextStatus,
+      },
+    }));
+    showFeedback(nextStatus === 'strong' ? 'Strong Day logged! 💪' : 'Reset Day logged 🔄', 'success');
+  };
+
+  // Sleep time helper
+  const getSleepTimeDisplay = (isoStr?: string) => {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    const h = d.getHours();
+    const m = d.getMinutes();
+    const period = h >= 12 ? 'PM' : 'AM';
+    const displayH = h % 12 === 0 ? 12 : h % 12;
+    return `${displayH}:${String(m).padStart(2, '0')} ${period}`;
+  };
+
+  const getSleepQualityEmoji = (duration: number) => {
+    if (duration < 6) return '🔴';
+    if (duration <= 7.5) return '🟡';
+    if (duration <= 9) return '🟢';
+    return '🔵';
   };
 
   return (
@@ -66,182 +115,230 @@ export default function Dashboard() {
       {/* HEADER */}
       <header className="mb-6 flex justify-between items-center">
         <div>
-          <p className="text-zinc-500 text-sm font-medium uppercase tracking-wider">{new Date().toLocaleDateString('en-US', { weekday: 'short' })}</p>
-          <h1 className="text-2xl font-bold text-white tracking-tight">{new Date().getDate()} {new Date().toLocaleDateString('en-US', { month: 'short' })}</h1>
+          <p className="text-zinc-500 text-sm font-medium uppercase tracking-wider">
+            {new Date().toLocaleDateString('en-US', { weekday: 'short' })}
+          </p>
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            {new Date().getDate()} {new Date().toLocaleDateString('en-US', { month: 'short' })}
+          </h1>
         </div>
         {latestWeight !== null && (
           <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-xl px-3 py-2">
             <p className="text-[10px] text-zinc-500 uppercase font-bold text-center">Weight</p>
-            <p className="text-base font-bold text-white text-center">{latestWeight}<span className="text-xs font-normal text-zinc-500">kg</span></p>
+            <p className="text-base font-bold text-white text-center">
+              {latestWeight}
+              <span className="text-xs font-normal text-zinc-500">kg</span>
+            </p>
           </div>
         )}
       </header>
 
-      {/* TOP SECTION: Daily Score + Key Metrics */}
-      <section className="mb-6 space-y-4">
+      {/* TOP SECTION: Scores */}
+      <section className="mb-6 grid grid-cols-2 gap-3">
         {/* Daily Score */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 p-5 shadow-lg shadow-blue-500/20">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mt-6 -mr-6" />
-          <p className="text-white/80 text-sm font-medium tracking-wide mb-1">Daily Score</p>
-          <div className="flex items-baseline gap-1">
-            <h2 className="text-5xl font-black text-white tracking-tighter">{score}</h2>
-            <span className="text-white/60 font-semibold text-lg">/ 100</span>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-650 p-5 shadow-lg shadow-blue-500/10 flex flex-col justify-between h-40">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl -mt-6 -mr-6" />
+          <div>
+            <p className="text-white/80 text-[10px] uppercase font-bold tracking-wider mb-1">Daily Score</p>
+            <div className="flex items-baseline gap-0.5">
+              <h2 className="text-4xl font-black text-white tracking-tighter">{score}</h2>
+              <span className="text-white/60 font-bold text-sm">/100</span>
+            </div>
           </div>
+          <p className="text-white/70 text-[9px] font-semibold leading-relaxed">
+            Overall daily consistency score across all habits.
+          </p>
         </div>
 
-        {/* Protein & Prayer Progress Row */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Protein Card */}
-          <Link href="/diet" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-green-500/10 rounded-full blur-2xl -mr-4 -mt-4" />
-            <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider mb-2">Protein</p>
-            <div className="flex items-baseline gap-1 mb-2">
-              <span className="text-xl font-black text-white">{Math.round(totalProtein)}g</span>
-              <span className="text-zinc-600 text-sm">/ {proteinGoal}g</span>
-            </div>
-            <div className="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800/50">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${totalProtein >= proteinGoal ? 'bg-green-500' : 'bg-blue-500'}`}
-                style={{ width: `${Math.min((totalProtein / proteinGoal) * 100, 100)}%` }}
+        {/* Recovery Score */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col items-center justify-center h-40 relative overflow-hidden">
+          <div className="relative flex items-center justify-center w-20 h-20">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+              <circle
+                className="text-zinc-850"
+                strokeWidth="6"
+                stroke="currentColor"
+                fill="transparent"
+                r="32"
+                cx="40"
+                cy="40"
               />
-            </div>
-          </Link>
-
-          {/* Prayer Card */}
-          <Link href="/namaz" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-full blur-2xl -mr-4 -mt-4" />
-            <p className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider mb-2">Prayers</p>
-            <div className="flex items-baseline gap-1 mb-2">
-              <span className="text-xl font-black text-white">{prayersDone}</span>
-              <span className="text-zinc-600 text-sm">/ 5</span>
-            </div>
-            <div className="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800/50">
-              <div
-                className="h-full rounded-full transition-all duration-500 bg-blue-500"
-                style={{ width: `${(prayersDone / 5) * 100}%` }}
+              <circle
+                className={`${
+                  recoveryScore >= 90 ? 'text-indigo-400' :
+                  recoveryScore >= 70 ? 'text-emerald-400' :
+                  recoveryScore >= 50 ? 'text-amber-400' : 'text-red-400'
+                } transition-all duration-500 ease-out`}
+                strokeWidth="6"
+                strokeDasharray={`${2 * Math.PI * 32}`}
+                strokeDashoffset={`${(1 - recoveryScore / 100) * 2 * Math.PI * 32}`}
+                strokeLinecap="round"
+                stroke="currentColor"
+                fill="transparent"
+                r="32"
+                cx="40"
+                cy="40"
               />
+            </svg>
+            <div className="absolute flex flex-col items-center justify-center">
+              <span className="text-xl font-black text-white">{recoveryScore}</span>
+              <span className="text-[8px] text-zinc-500 uppercase font-bold">/ 100</span>
             </div>
-          </Link>
+          </div>
+          <p className="text-zinc-300 text-xs font-bold mt-2 uppercase tracking-wide leading-none">{recoveryStatus}</p>
+          <span className="text-[8px] text-zinc-500 text-center mt-1 leading-none font-semibold block">
+            Calculated from Sleep, Gym, Steps & Protein
+          </span>
         </div>
       </section>
 
-      {/* MIDDLE SECTION: CARD GRID */}
+      {/* TODAY'S HABITS: 8 UNIFORM CARDS */}
       <section className="mb-6">
         <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Today&apos;s Status</h3>
         <div className="grid grid-cols-2 gap-3">
+          
           {/* Gym Card */}
           <div
             onClick={toggleGym}
-            className={`relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] ${gymDone ? 'bg-green-900/30 border-2 border-green-500' : 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/70'}`}
+            className={`relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] flex flex-col justify-between h-32 ${
+              gymDone 
+                ? 'bg-zinc-900 border-2 border-emerald-500/80 shadow-md shadow-emerald-500/5' 
+                : 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/70'
+            }`}
           >
-            <div className="flex justify-between items-start mb-2">
+            <div>
               <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Gym</span>
-              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${gymDone ? 'bg-green-500 border-green-500' : 'border-zinc-600'}`}>
-                {gymDone && <span className="text-zinc-900 text-xs font-black">✓</span>}
-              </div>
+              <p className={`text-base font-black tracking-tight mt-1 ${gymDone ? 'text-emerald-400' : 'text-zinc-300'}`}>
+                {gymDone ? 'Done ✓' : 'Pending'}
+              </p>
             </div>
-            <p className={`text-xl font-black tracking-tight ${gymDone ? 'text-green-400' : 'text-white'}`}>
-              {gymDone ? 'Done' : 'Pending'}
-            </p>
+            <p className="text-[10px] text-zinc-500 font-semibold uppercase">🔥 Streak: {gymStreak}d</p>
           </div>
 
           {/* College Card */}
           <div
             onClick={toggleCollege}
-            className={`relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] ${collegeDone ? 'bg-green-900/30 border-2 border-green-500' : 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/70'}`}
+            className={`relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] flex flex-col justify-between h-32 ${
+              collegeDone 
+                ? 'bg-zinc-900 border-2 border-emerald-500/80 shadow-md shadow-emerald-500/5' 
+                : 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/70'
+            }`}
           >
-            <div className="flex justify-between items-start mb-2">
+            <div>
               <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">College</span>
-              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${collegeDone ? 'bg-green-500 border-green-500' : 'border-zinc-600'}`}>
-                {collegeDone && <span className="text-zinc-900 text-xs font-black">✓</span>}
-              </div>
+              <p className={`text-base font-black tracking-tight mt-1 ${collegeDone ? 'text-emerald-400' : 'text-zinc-300'}`}>
+                {collegeDone ? 'Attended ✓' : 'Pending'}
+              </p>
             </div>
-            <p className={`text-xl font-black tracking-tight ${collegeDone ? 'text-green-400' : 'text-white'}`}>
-              {collegeDone ? 'Attended' : 'Pending'}
-            </p>
+            <p className="text-[10px] text-zinc-500 font-semibold uppercase">🔥 Streak: {collegeStreak}d</p>
           </div>
 
           {/* 10K Steps Card */}
           <div
             onClick={toggleSteps}
-            className={`relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] ${stepsDone ? 'bg-green-900/30 border-2 border-green-500' : 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/70'}`}
+            className={`relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] flex flex-col justify-between h-32 ${
+              stepsDone 
+                ? 'bg-zinc-900 border-2 border-emerald-500/80 shadow-md shadow-emerald-500/5' 
+                : 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/70'
+            }`}
           >
-            <div className="flex justify-between items-start mb-2">
+            <div>
               <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">10K Steps</span>
-              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${stepsDone ? 'bg-green-500 border-green-500' : 'border-zinc-600'}`}>
-                {stepsDone && <span className="text-zinc-900 text-xs font-black">✓</span>}
-              </div>
+              <p className={`text-base font-black tracking-tight mt-1 ${stepsDone ? 'text-emerald-400' : 'text-zinc-300'}`}>
+                {stepsDone ? 'Completed ✓' : 'Pending'}
+              </p>
             </div>
-            <p className={`text-xl font-black tracking-tight ${stepsDone ? 'text-green-400' : 'text-white'}`}>
-              {stepsDone ? 'Completed' : 'Pending'}
+            <p className="text-[10px] text-zinc-500 font-semibold uppercase">🔥 Streak: {stepsStreak}d</p>
+          </div>
+
+          {/* Sleep Card */}
+          <Link
+            href="/sleep"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:bg-zinc-800/70 transition-all flex flex-col justify-between h-32 active:scale-[0.98]"
+          >
+            <div>
+              <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Sleep</span>
+              <p className="text-base font-black text-white mt-1 truncate">
+                {sleepLog ? `${sleepLog.duration?.toFixed(1)} hrs` : 'No log'}
+                {sleepLog && sleepLog.duration !== undefined && (
+                  <span className="text-xs ml-1.5">{getSleepQualityEmoji(sleepLog.duration)}</span>
+                )}
+              </p>
+            </div>
+            <p className="text-[10px] text-zinc-400 font-medium truncate">
+              {sleepLog 
+                ? `${getSleepTimeDisplay(sleepLog.bedTime)} - ${getSleepTimeDisplay(sleepLog.wakeTime)} (🔥 ${sleepStreak}d)` 
+                : 'Tap to track sleep'}
             </p>
+          </Link>
+
+          {/* Discipline Card */}
+          <div
+            onClick={toggleDiscipline}
+            className={`relative overflow-hidden rounded-xl p-4 cursor-pointer transition-all active:scale-[0.98] flex flex-col justify-between h-32 ${
+              disciplineStatus === 'strong' 
+                ? 'bg-zinc-900 border-2 border-emerald-500/80 shadow-md shadow-emerald-500/5' 
+                : 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800/70'
+            }`}
+          >
+            <div>
+              <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Discipline</span>
+              <p className={`text-base font-black tracking-tight mt-1 ${disciplineStatus === 'strong' ? 'text-emerald-400' : 'text-zinc-350'}`}>
+                {disciplineStatus === 'strong' ? '✅ Strong Day' : '🔄 Reset Day'}
+              </p>
+            </div>
+            <p className="text-[10px] text-zinc-500 font-semibold uppercase">🔥 Streak: {disciplineStreak}d</p>
           </div>
 
           {/* Diet Card */}
-          <Link href="/diet" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
-            <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider block mb-2">Diet</span>
-            <div className="space-y-1">
-              <p className="text-base font-extrabold text-white tracking-tight">
-                🥩 {Math.round(totalProtein)}g <span className="text-[10px] text-zinc-500 font-normal">/ {proteinGoal}g</span>
-              </p>
-              <p className="text-base font-extrabold text-white tracking-tight">
-                🔥 {Math.round(totalCalories)} <span className="text-[10px] text-zinc-500 font-normal">/ {calorieGoal} kcal</span>
+          <Link
+            href="/diet"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:bg-zinc-800/70 transition-all flex flex-col justify-between h-32 active:scale-[0.98]"
+          >
+            <div>
+              <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Diet</span>
+              <p className="text-base font-black text-white mt-1">
+                🥩 {Math.round(totalProtein)}g
               </p>
             </div>
+            <p className="text-[9px] text-zinc-500 font-semibold uppercase">
+              Target: {proteinGoal}g • {totalCalories} kcal (🔥 {proteinStreak}d)
+            </p>
           </Link>
 
-          {/* Tasks Card */}
-          <Link href="/todos" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
-            <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider block mb-2">Tasks</span>
-            <p className="text-xl font-black text-white tracking-tight">
-              {tasksDone}<span className="text-sm font-normal text-zinc-600">/ {activeTodos.length}</span>
-            </p>
-            <div className="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800/50 mt-2">
+          {/* Namaz Card */}
+          <Link
+            href="/namaz"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:bg-zinc-800/70 transition-all flex flex-col justify-between h-32 active:scale-[0.98]"
+          >
+            <div>
+              <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Namaz</span>
+              <p className="text-base font-black text-white mt-1">
+                🕋 {prayersDone} / 5
+              </p>
+            </div>
+            <p className="text-[10px] text-zinc-500 font-semibold uppercase">🔥 Streak: {prayerStreak}d</p>
+          </Link>
+
+          {/* Todo Card */}
+          <Link
+            href="/todos"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:bg-zinc-800/70 transition-all flex flex-col justify-between h-32 active:scale-[0.98]"
+          >
+            <div>
+              <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Todo</span>
+              <p className="text-base font-black text-white mt-1">
+                📋 {tasksDone} / {activeTodos.length}
+              </p>
+            </div>
+            <div className="w-full bg-zinc-950 rounded-full h-1 border border-zinc-800/50">
               <div
-                className="h-full rounded-full transition-all duration-500 bg-indigo-500"
+                className="h-full rounded-full bg-indigo-500 transition-all duration-300"
                 style={{ width: `${activeTodos.length ? (tasksDone / activeTodos.length) * 100 : 0}%` }}
               />
             </div>
           </Link>
 
-          {/* Namaz Card */}
-          <Link href="/namaz" className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 relative overflow-hidden block hover:bg-zinc-800/50 transition-colors">
-            <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider block mb-2">Namaz</span>
-            <p className="text-xl font-black text-white tracking-tight">
-              {prayersDone}<span className="text-sm font-normal text-zinc-600">/ 5</span>
-            </p>
-            <div className="w-full bg-zinc-950 rounded-full h-2 border border-zinc-800/50 mt-2">
-              <div
-                className="h-full rounded-full transition-all duration-500 bg-purple-500"
-                style={{ width: `${(prayersDone / 5) * 100}%` }}
-              />
-            </div>
-          </Link>
-        </div>
-      </section>
-
-      {/* BOTTOM SECTION: Streaks */}
-      <section className="space-y-4">
-        {/* Streaks */}
-        <div>
-          <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Current Streaks</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-xl p-3 flex flex-col items-center shadow-sm">
-              <span className="text-lg mb-1">🔥</span>
-              <span className="text-base font-bold text-white">{gymStreak}</span>
-              <span className="text-[10px] text-zinc-500 uppercase">Gym</span>
-            </div>
-            <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-xl p-3 flex flex-col items-center shadow-sm">
-              <span className="text-lg mb-1">🕋</span>
-              <span className="text-base font-bold text-white">{prayerStreak}</span>
-              <span className="text-[10px] text-zinc-500 uppercase">Prayers</span>
-            </div>
-            <div className="bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-xl p-3 flex flex-col items-center shadow-sm">
-              <span className="text-lg mb-1">🥩</span>
-              <span className="text-base font-bold text-white">{proteinStreak}</span>
-              <span className="text-[10px] text-zinc-500 uppercase">Protein</span>
-            </div>
-          </div>
         </div>
       </section>
     </div>

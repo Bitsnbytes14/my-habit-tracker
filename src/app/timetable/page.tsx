@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useEffect, useState } from 'react';
 import { useLifeOS } from '@/components/LifeOSProvider';
 import { AttendanceClass, SubjectConfig, attendanceConfig } from '@/lib/attendance';

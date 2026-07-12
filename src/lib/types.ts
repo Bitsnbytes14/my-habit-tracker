@@ -41,8 +41,15 @@ export interface WeightLog {
   weight: number;
 }
 
+export interface SleepRecord {
+  bedTime?: string;   // ISO string or YYYY-MM-DDTHH:mm
+  wakeTime?: string;  // ISO string or YYYY-MM-DDTHH:mm
+  duration?: number;  // in hours
+}
+
 export interface Settings {
   proteinGoal: number;
+  sleepGoal?: number;
 }
 
 export interface LifeOSData {
@@ -59,6 +66,9 @@ export interface LifeOSData {
   college?: Record<string, boolean>; // Key: YYYY-MM-DD
   steps?: Record<string, boolean>; // Key: YYYY-MM-DD
   weeklyReports?: WeeklyReport[];
+  sleep?: Record<string, SleepRecord>; // Key: YYYY-MM-DD
+  discipline?: Record<string, 'strong' | 'reset'>; // Key: YYYY-MM-DD
+  activeSleepStart?: string | null;
 }
 
 export interface WeeklyReport {
@@ -66,6 +76,7 @@ export interface WeeklyReport {
   startDate: string; // YYYY-MM-DD (Monday)
   endDate: string; // YYYY-MM-DD (Sunday)
   avgScore: number;
+  avgRecoveryScore: number;
   gymPct: number;
   collegePct: number;
   stepsPct: number;
@@ -73,6 +84,9 @@ export interface WeeklyReport {
   proteinPct: number;
   todoPct: number;
   classAttendancePct: number;
+  disciplinePct: number;
+  sleepPct: number;
+  avgSleepDuration: number;
   grade: string;
   gymAttended: number;
   gymTotal: number;
@@ -88,10 +102,15 @@ export interface WeeklyReport {
   todosTotal: number;
   classesAttended: number;
   classesTotal: number;
+  disciplineAttended: number;
+  disciplineTotal: number;
+  sleepAttended: number;
+  sleepTotal: number;
 }
 
 export const defaultSettings: Settings = {
   proteinGoal: 120,
+  sleepGoal: 8,
 };
 
 export const defaultPrayers: Prayers = {

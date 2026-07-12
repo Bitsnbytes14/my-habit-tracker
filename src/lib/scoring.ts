@@ -61,3 +61,37 @@ export const calculateDailyScore = (data: LifeOSData, dateStr: string = getToday
 
   return Math.round(score);
 };
+
+export const calculateRecoveryScore = (data: LifeOSData, dateStr: string = getTodayString()): number => {
+  // 1. Sleep (25 pts)
+  const sleepDuration = data.sleep?.[dateStr]?.duration || 0;
+  let sleepScore = 0;
+  if (sleepDuration >= 7.5) {
+    sleepScore = 25;
+  } else if (sleepDuration >= 6) {
+    sleepScore = 15 + ((sleepDuration - 6) / 1.5) * 10;
+  } else if (sleepDuration > 0) {
+    sleepScore = (sleepDuration / 6) * 15;
+  }
+
+  // 2. Gym (25 pts)
+  const gymScore = data.gym[dateStr] === true ? 25 : 0;
+
+  // 3. 10K Steps (25 pts)
+  const stepsScore = data.steps?.[dateStr] === true ? 25 : 0;
+
+  // 4. Protein Goal (25 pts)
+  const todayMeals = data.meals.filter((m) => m.date === dateStr);
+  const proteinGoal = data.settings?.proteinGoal || 120;
+  const totalProtein = todayMeals.reduce((acc, meal) => acc + (meal.protein || 0), 0);
+  const proteinScore = Math.min((totalProtein / proteinGoal) * 25, 25);
+
+  return Math.round(sleepScore + gymScore + stepsScore + proteinScore);
+};
+
+export const getRecoveryStatus = (score: number): 'Excellent' | 'Good' | 'Average' | 'Needs Improvement' => {
+  if (score >= 90) return 'Excellent';
+  if (score >= 70) return 'Good';
+  if (score >= 50) return 'Average';
+  return 'Needs Improvement';
+};

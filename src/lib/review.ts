@@ -1,5 +1,5 @@
 import { LifeOSData, WeeklyReport } from './types';
-import { calculateDailyScore } from './scoring';
+import { calculateDailyScore, calculateRecoveryScore } from './scoring';
 import { attendanceConfig } from './attendance';
 
 // Helper to convert Date to YYYY-MM-DD
@@ -102,16 +102,35 @@ export const calculateWeeklyStats = (
   }, 0);
   const classAttendancePct = classesTotal > 0 ? (classesAttended / classesTotal) * 100 : 0;
 
-  // 8. Daily Score Avg
+  // 8. Discipline (NEW)
+  const disciplineAttended = dates.filter(d => data.discipline?.[d] === 'strong').length;
+  const disciplineTotal = 7;
+  const disciplinePct = (disciplineAttended / disciplineTotal) * 100;
+
+  // 9. Sleep (NEW)
+  const sleepGoal = data.settings?.sleepGoal || 8;
+  const sleepAttended = dates.filter(d => (data.sleep?.[d]?.duration || 0) >= sleepGoal).length;
+  const sleepTotal = 7;
+  const sleepPct = (sleepAttended / sleepTotal) * 100;
+
+  const sleepDurations = dates.map(d => data.sleep?.[d]?.duration || 0);
+  const avgSleepDuration = sleepDurations.reduce((acc, curr) => acc + curr, 0) / 7;
+
+  // 10. Daily Score Avg
   const weeklyScores = dates.map(d => calculateDailyScore(data, d));
   const avgScore = Math.round(weeklyScores.reduce((acc, curr) => acc + curr, 0) / 7);
   const grade = getGradeForScore(avgScore);
+
+  // 11. Recovery Score Avg (NEW)
+  const recoveryScores = dates.map(d => calculateRecoveryScore(data, d));
+  const avgRecoveryScore = Math.round(recoveryScores.reduce((acc, curr) => acc + curr, 0) / 7);
 
   return {
     weekNumber,
     startDate: mondayStr,
     endDate: sundayStr,
     avgScore,
+    avgRecoveryScore,
     gymPct,
     collegePct,
     stepsPct,
@@ -119,6 +138,9 @@ export const calculateWeeklyStats = (
     proteinPct,
     todoPct,
     classAttendancePct,
+    disciplinePct,
+    sleepPct,
+    avgSleepDuration,
     grade,
     gymAttended,
     gymTotal,
@@ -133,25 +155,34 @@ export const calculateWeeklyStats = (
     todosAttended,
     todosTotal,
     classesAttended,
-    classesTotal
+    classesTotal,
+    disciplineAttended,
+    disciplineTotal,
+    sleepAttended,
+    sleepTotal
   };
 };
 
 // Automatically scan and archive past weeks that have finished
-export const checkAndArchiveCompletedWeeks = (data: LifeOSData, updateData: Function): void => {
+export const checkAndArchiveCompletedWeeks = (
+  data: LifeOSData,
+  updateData: (updates: Partial<LifeOSData> | ((prev: LifeOSData) => Partial<LifeOSData>)) => void
+): void => {
   const today = new Date();
   const currentMonday = getMonday(today);
 
   // Find the earliest tracked date in history
   const trackedDates = [
-    ...Object.keys(data.gym),
-    ...Object.keys(data.prayers),
-    ...Object.keys(data.journal),
+    ...Object.keys(data.gym || {}),
+    ...Object.keys(data.prayers || {}),
+    ...Object.keys(data.journal || {}),
     ...Object.keys(data.coding || {}),
     ...Object.keys(data.college || {}),
     ...Object.keys(data.steps || {}),
-    ...data.meals.map(m => m.date),
-    ...data.weightLogs.map(w => w.date)
+    ...Object.keys(data.discipline || {}),
+    ...Object.keys(data.sleep || {}),
+    ...(data.meals || []).map(m => m.date),
+    ...(data.weightLogs || []).map(w => w.date)
   ].sort();
 
   if (trackedDates.length === 0) return;
@@ -159,32 +190,28 @@ export const checkAndArchiveCompletedWeeks = (data: LifeOSData, updateData: Func
   const earliestDate = new Date(trackedDates[0]);
   const startMonday = getMonday(earliestDate);
 
-  let loopMonday = new Date(startMonday);
-  let hasUpdated = false;
-  const newReports = [...(data.weeklyReports || [])];
+  const loopMonday = new Date(startMonday);
+  const newReports: WeeklyReport[] = [];
 
   while (loopMonday < currentMonday) {
     const mondayStr = formatDateString(loopMonday);
     const sundayDate = getSunday(loopMonday);
     const sundayStr = formatDateString(sundayDate);
 
-    // If this week is not yet archived
-    const isArchived = newReports.some(r => r.startDate === mondayStr);
-    if (!isArchived) {
-      const nextWeekNumber = newReports.length + 1;
-      const report = calculateWeeklyStats(data, mondayStr, sundayStr, nextWeekNumber);
-      newReports.push(report);
-      hasUpdated = true;
-    }
+    const nextWeekNumber = newReports.length + 1;
+    const report = calculateWeeklyStats(data, mondayStr, sundayStr, nextWeekNumber);
+    newReports.push(report);
 
     // Move to next week Monday
     loopMonday.setDate(loopMonday.getDate() + 7);
   }
 
-  if (hasUpdated) {
-    updateData(() => ({
+  const oldReportsStr = JSON.stringify(data.weeklyReports || []);
+  const newReportsStr = JSON.stringify(newReports);
+  if (oldReportsStr !== newReportsStr) {
+    updateData({
       weeklyReports: newReports
-    }));
+    });
   }
 };
 
@@ -194,51 +221,53 @@ export const generateWeeklySummary = (current: WeeklyReport, previous: WeeklyRep
     return 'Complete one full week to unlock comparison insights.';
   }
 
-  const scoreDiff = current.avgScore - previous.avgScore;
-  let summary = '';
-
-  if (scoreDiff > 0) {
-    summary += 'This week you were more consistent than last week.';
-  } else if (scoreDiff < 0) {
-    summary += 'This week you were slightly less consistent than last week.';
-  } else {
-    summary += 'This week your consistency was steady compared to last week.';
-  }
+  const improved: string[] = [];
+  const declined: string[] = [];
 
   const habits = [
-    { name: 'Gym', current: current.gymPct, previous: previous.gymPct },
+    { name: 'Gym consistency', current: current.gymPct, previous: previous.gymPct },
     { name: 'college attendance', current: current.collegePct, previous: previous.collegePct },
     { name: '10K steps goal', current: current.stepsPct, previous: previous.stepsPct },
     { name: 'prayers completion', current: current.prayerPct, previous: previous.prayerPct },
     { name: 'protein goal achievement', current: current.proteinPct, previous: previous.proteinPct },
     { name: 'todo completion', current: current.todoPct, previous: previous.todoPct },
-    { name: 'class attendance', current: current.classAttendancePct, previous: previous.classAttendancePct }
+    { name: 'class attendance', current: current.classAttendancePct, previous: previous.classAttendancePct },
+    { name: 'discipline', current: current.disciplinePct, previous: previous.disciplinePct },
+    { name: 'sleep consistency', current: current.sleepPct, previous: previous.sleepPct },
+    { name: 'Recovery Score', current: current.avgRecoveryScore, previous: previous.avgRecoveryScore }
   ];
-
-  const improved: string[] = [];
-  const dropped: string[] = [];
 
   habits.forEach(h => {
     const diff = h.current - h.previous;
     if (diff > 2) {
       improved.push(h.name);
     } else if (diff < -2) {
-      dropped.push(h.name);
+      declined.push(h.name);
     }
   });
 
-  if (improved.length > 0 && dropped.length > 0) {
-    summary += ` ${improved.slice(0, 3).join(', ')} improved, while ${dropped.slice(0, 3).join(', ')} dropped slightly.`;
-  } else if (improved.length > 0) {
-    summary += ` ${improved.slice(0, 3).join(', ')} improved.`;
-  } else if (dropped.length > 0) {
-    summary += ` ${dropped.slice(0, 3).join(', ')} dropped slightly.`;
+  let summary = '';
+  if (improved.length > 0) {
+    const listStr = improved.length > 1
+      ? `${improved.slice(0, -1).join(', ')} and ${improved[improved.length - 1]}`
+      : improved[0];
+    summary += `This week you improved your ${listStr}. `;
+  } else {
+    summary += `This week, your habits remained steady compared to last week. `;
   }
 
-  // Add focus recommendation
+  if (declined.length > 0) {
+    const listStr = declined.length > 1
+      ? `${declined.slice(0, -1).join(', ')} and ${declined[declined.length - 1]}`
+      : declined[0];
+    summary += `However, ${listStr} declined slightly. `;
+  } else {
+    summary += `No major declines were observed across your metrics. `;
+  }
+
+  // Determine focus
   let focusHabit = habits[0];
   let mostNegativeDiff = 0;
-  
   habits.forEach(h => {
     const diff = h.current - h.previous;
     if (diff < mostNegativeDiff) {
@@ -247,8 +276,8 @@ export const generateWeeklySummary = (current: WeeklyReport, previous: WeeklyRep
     }
   });
 
-  // If nothing dropped, suggest the lowest completion habit
-  if (mostNegativeDiff === 0) {
+  // If nothing dropped, suggest lowest current completion habit
+  if (mostNegativeDiff >= -2) {
     let lowestVal = 101;
     habits.forEach(h => {
       if (h.current < lowestVal) {
@@ -258,6 +287,21 @@ export const generateWeeklySummary = (current: WeeklyReport, previous: WeeklyRep
     });
   }
 
-  summary += ` Keep focusing on ${focusHabit.name} next week.`;
+  // Map to actionable advice
+  const adviceMap: Record<string, string> = {
+    'Gym consistency': 'Focus on getting to the gym as planned next week.',
+    'college attendance': 'Try to attend all your college classes next week.',
+    '10K steps goal': 'Focus on hitting your daily steps goal next week.',
+    'prayers completion': 'Prioritize completing your daily prayers on time next week.',
+    'protein goal achievement': 'Focus on meeting your daily protein targets next week.',
+    'todo completion': 'Focus on completing more planned tasks next week.',
+    'class attendance': 'Focus on improving your academic class attendance next week.',
+    'discipline': 'Try to stay disciplined and avoid resets next week.',
+    'sleep consistency': 'Focus on maintaining a consistent sleep schedule next week.',
+    'Recovery Score': 'Prioritize your overall rest and recovery next week.'
+  };
+
+  const advice = adviceMap[focusHabit.name] || 'Focus on maintaining consistency next week.';
+  summary += advice;
   return summary;
 };
