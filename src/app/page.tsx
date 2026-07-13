@@ -17,6 +17,7 @@ import {
   getEssentialsStreak,
 } from '@/lib/streaks';
 import { DailyEssentialsRecord } from '@/lib/types';
+import { CoinFlipWidget } from '@/components/CoinFlipWidget';
 
 export default function Dashboard() {
   const { data, updateData, showFeedback } = useLifeOS();
@@ -565,6 +566,11 @@ export default function Dashboard() {
           </div>
 
         </div>
+      </section>
+
+      {/* Utilities Section */}
+      <section className="mt-8 flex justify-center">
+        <CoinFlipWidget />
       </section>
     </div>
   );
